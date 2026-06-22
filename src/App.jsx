@@ -1,6 +1,8 @@
 import "./styles.css";
 import { useState, useEffect } from "react";
 
+const BASE_URL = "https://pre-incubation-backend.onrender.com";
+
 export default function App() {
 
   const [formData, setFormData] = useState({
@@ -22,7 +24,7 @@ export default function App() {
 
   const fetchStartups = async () => {
     try {
-      const response = await fetch("http://172.17.135.134:5000/startups");
+      const response = await fetch(`${BASE_URL}/startups`);
       const data = await response.json();
       setStartups(data);
     } catch (error) {
@@ -36,7 +38,7 @@ export default function App() {
 
   const updateStatus = async (id, status) => {
     try {
-      await fetch(`http://127.0.0.1:5000/update-status/${id}`, {
+      await fetch(`${BASE_URL}/update-status/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: status }),
@@ -66,7 +68,7 @@ export default function App() {
       data.append("certificate", files.certificate);
       data.append("businessPlan", files.businessPlan);
 
-      const response = await fetch("http://127.0.0.1:5000/register", {
+      const response = await fetch(`${BASE_URL}/register`, {
         method: "POST",
         body: data,
       });
@@ -89,7 +91,6 @@ export default function App() {
 
   return (
     <div className="app">
-
       <div className="header">
         <h1>Automated Pre-Incubation Management System</h1>
         <p>AIC Startup Portal — Application & Review Dashboard</p>
@@ -122,7 +123,6 @@ export default function App() {
 
       <div className="card">
         <div className="card-title">Startup Registration</div>
-
         <div className="form-grid">
           <div className="form-field">
             <label>Startup Name</label>
@@ -214,11 +214,11 @@ export default function App() {
                     <td>{startup.founder_name}</td>
                     <td>{startup.email}</td>
                     <td>{startup.sector}</td>
-                    <td><a className="dl-link" href={`http://127.0.0.1:5000/download/${startup.pitch_deck}`} target="_blank" rel="noreferrer">Download</a></td>
-                    <td><a className="dl-link" href={`http://127.0.0.1:5000/download/${startup.resume}`} target="_blank" rel="noreferrer">Download</a></td>
-                    <td><a className="dl-link" href={`http://127.0.0.1:5000/download/${startup.pan_card}`} target="_blank" rel="noreferrer">Download</a></td>
-                    <td><a className="dl-link" href={`http://127.0.0.1:5000/download/${startup.certificate}`} target="_blank" rel="noreferrer">Download</a></td>
-                    <td><a className="dl-link" href={`http://127.0.0.1:5000/download/${startup.business_plan}`} target="_blank" rel="noreferrer">Download</a></td>
+                    <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pitch_deck}`} target="_blank" rel="noreferrer">Download</a></td>
+                    <td><a className="dl-link" href={`${BASE_URL}/download/${startup.resume}`} target="_blank" rel="noreferrer">Download</a></td>
+                    <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pan_card}`} target="_blank" rel="noreferrer">Download</a></td>
+                    <td><a className="dl-link" href={`${BASE_URL}/download/${startup.certificate}`} target="_blank" rel="noreferrer">Download</a></td>
+                    <td><a className="dl-link" href={`${BASE_URL}/download/${startup.business_plan}`} target="_blank" rel="noreferrer">Download</a></td>
                     <td>
                       <span className={`badge ${
                         startup.status === "Approved" ? "badge-approved" :
@@ -238,7 +238,6 @@ export default function App() {
           </table>
         </div>
       </div>
-
     </div>
   );
 }
