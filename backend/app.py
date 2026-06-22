@@ -6,7 +6,7 @@ from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*")
 
 # ======================================
 # EMAIL CONFIGURATION
