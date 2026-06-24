@@ -6,6 +6,15 @@ from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app = Flask(__name__)
+CORS(app, origins="*")
+
+# Database connection with WAL mode
+def get_db_connection():
+    conn = sqlite3.connect('startups.db', timeout=20, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.row_factory = sqlite3.Row
+    return conn
 CORS(app, origins="*")
 
 # ======================================
@@ -41,6 +50,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # ======================================
 def get_db_connection():
     conn = sqlite3.connect('startups.db', timeout=20, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row
     return conn
 
