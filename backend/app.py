@@ -6,15 +6,6 @@ from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app = Flask(__name__)
-CORS(app, origins="*")
-
-# Database connection with WAL mode
-def get_db_connection():
-    conn = sqlite3.connect('startups.db', timeout=20, check_same_thread=False)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.row_factory = sqlite3.Row
-    return conn
 CORS(app, origins="*")
 
 # ======================================
@@ -23,23 +14,16 @@ CORS(app, origins="*")
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-
-# YOUR GMAIL
 app.config['MAIL_USERNAME'] = 'usaai4279@gmail.com'
-
-# NEW GOOGLE APP PASSWORD (WITHOUT SPACES)
 app.config['MAIL_PASSWORD'] = 'bhbtlckyucwxcwzz'
 
 mail = Mail(app)
-
-# ADMIN EMAIL
 ADMIN_EMAIL = 'Rohity8824@gmail.com'
 
 # ======================================
 # FILE UPLOAD CONFIGURATION
 # ======================================
 UPLOAD_FOLDER = 'uploads'
-
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -56,6 +40,7 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute('''
     CREATE TABLE IF NOT EXISTS startups (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +59,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# INITIALIZE DATABASE
 init_db()
 
 # ======================================
@@ -95,13 +79,7 @@ def register():
         email = request.form.get('email')
         sector = request.form.get('sector')
 
-        required_files = [
-            'pitchDeck',
-            'resume',
-            'panCard',
-            'certificate',
-            'businessPlan'
-        ]
+        required_files = ['pitchDeck', 'resume', 'panCard', 'certificate', 'businessPlan']
 
         for f in required_files:
             if f not in request.files:
@@ -113,13 +91,10 @@ def register():
         certificate = request.files['certificate']
         business_plan = request.files['businessPlan']
 
-        # PDF validation
         if not pitch_deck.filename.lower().endswith('.pdf'):
             return jsonify({"error": "Pitch Deck must be PDF"}), 400
-
         if not resume.filename.lower().endswith('.pdf'):
             return jsonify({"error": "Resume must be PDF"}), 400
-
         if not business_plan.filename.lower().endswith('.pdf'):
             return jsonify({"error": "Business Plan must be PDF"}), 400
 
@@ -137,44 +112,21 @@ def register():
 
         conn = get_db_connection()
         conn.execute(
-            '''
-            INSERT INTO startups
-            (
-                startup_name,
-                founder_name,
-                email,
-                sector,
-                pitch_deck,
-                resume,
-                pan_card,
-                certificate,
-                business_plan
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''',
-            (
-                startup_name,
-                founder_name,
-                email,
-                sector,
-                pitch_deck_name,
-                resume_name,
-                pan_card_name,
-                certificate_name,
-                business_plan_name
-            )
+            '''INSERT INTO startups
+            (startup_name, founder_name, email, sector, pitch_deck, resume, pan_card, certificate, business_plan)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (startup_name, founder_name, email, sector, pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name)
         )
         conn.commit()
         conn.close()
 
-        base_url = "http://172.17.135.134:5000"
+        base_url = "https://pre-incubation-backend.onrender.com"
         pitch_link = f"{base_url}/download/{pitch_deck_name}"
         resume_link = f"{base_url}/download/{resume_name}"
         pan_link = f"{base_url}/download/{pan_card_name}"
         certificate_link = f"{base_url}/download/{certificate_name}"
         business_link = f"{base_url}/download/{business_plan_name}"
 
-        # Applicant Email
         msg = Message(
             subject='AIC Pre-Incubation Application Submitted',
             sender=app.config['MAIL_USERNAME'],
@@ -195,7 +147,6 @@ def register():
         """
         mail.send(msg)
 
-        # Admin Email
         admin_msg = Message(
             subject=f'New Startup Application - {startup_name}',
             sender=app.config['MAIL_USERNAME'],
@@ -230,10 +181,7 @@ def get_startups():
     conn = get_db_connection()
     rows = conn.execute("SELECT * FROM startups").fetchall()
     conn.close()
-
-    startups = []
-    for row in rows:
-        startups.append(dict(row))
+    startups = [dict(row) for row in rows]
     return jsonify(startups)
 
 # ======================================
@@ -241,11 +189,7 @@ def get_startups():
 # ======================================
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
-    return send_from_directory(
-        app.config['UPLOAD_FOLDER'],
-        filename,
-        as_attachment=False
-    )
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 # ======================================
 # UPDATE STATUS
@@ -267,16 +211,8 @@ def update_status(id):
         conn.close()
         return jsonify({"error": "Startup not found"}), 404
 
-    conn.execute(
-        '''
-        UPDATE startups
-        SET status = ?
-        WHERE id = ?
-        ''',
-        (status, id)
-    )
+    conn.execute("UPDATE startups SET status = ? WHERE id = ?", (status, id))
 
-    # Approval / Rejection Emails Logic Fixed
     if status == "Approved":
         msg = Message(
             subject="Startup Application Approved",
@@ -285,8 +221,7 @@ def update_status(id):
         )
         msg.body = f"""Hello {startup['founder_name']},
 
-Congratulations!
-Your startup application has been APPROVED.
+Congratulations! Your startup application has been APPROVED.
 
 Startup Name: {startup['startup_name']}
 Sector: {startup['sector']}
