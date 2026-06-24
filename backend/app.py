@@ -40,7 +40,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # DATABASE HELPER FUNCTION
 # ======================================
 def get_db_connection():
-    conn = sqlite3.connect('startups.db')
+    conn = sqlite3.connect('startups.db', timeout=20, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
