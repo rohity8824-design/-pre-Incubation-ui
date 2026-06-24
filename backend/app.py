@@ -59,8 +59,16 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-
-init_db()
+# Reset corrupted database on startup
+try:
+    conn = sqlite3.connect('startups.db', timeout=30)
+    conn.execute("PRAGMA integrity_check")
+    conn.close()
+except:
+    import os
+    if os.path.exists('startups.db'):
+        os.remove('startups.db')
+    init_db()
 
 # ======================================
 # HOME ROUTE
