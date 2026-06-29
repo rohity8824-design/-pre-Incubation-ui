@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import threading  # <-- BACKGROUND EMAIL KE LIYE ADD KIYA
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -19,6 +20,16 @@ app.config['MAIL_PASSWORD'] = 'bhbtlckyucwxcwzz'
 
 mail = Mail(app)
 ADMIN_EMAIL = 'Rohity8824@gmail.com'
+
+# ======================================
+# BACKGROUND EMAIL HELPER
+# ======================================
+def send_async_email(app, msg):
+    with app.app_context():
+        try:
+            mail.send(msg)
+        except Exception as e:
+            print("Async Mail Error:", str(e))
 
 # ======================================
 # FILE UPLOAD CONFIGURATION
@@ -137,51 +148,51 @@ def register():
         certificate_link = f"{base_url}/download/{certificate_name}"
         business_link = f"{base_url}/download/{business_plan_name}"
 
-        # Email sending blocks wrapped in try-except so they don't break the response
-        try:
-            msg = Message(
-                subject='AIC Pre-Incubation Application Submitted',
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[email]
-            )
-            msg.html = f"""
-            <h2>Application Submitted Successfully</h2>
-            <p>Hello {founder_name},</p>
-            <p>Your startup application has been submitted successfully.</p>
-            <p><b>Startup Name:</b> {startup_name}</p>
-            <p><b>Sector:</b> {sector}</p>
-            <p><a href="{pitch_link}">View Pitch Deck</a></p>
-            <p><a href="{resume_link}">View Resume</a></p>
-            <p><a href="{pan_link}">View PAN Card</a></p>
-            <p><a href="{certificate_link}">View Certificate</a></p>
-            <p><a href="{business_link}">View Business Plan</a></p>
-            <p>Regards,<br>AIC Team</p>
-            """
-            mail.send(msg)
+        # --- Async Email for User ---
+        msg = Message(
+            subject='AIC Pre-Incubation Application Submitted',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[email]
+        )
+        msg.html = f"""
+        <h2>Application Submitted Successfully</h2>
+        <p>Hello {founder_name},</p>
+        <p>Your startup application has been submitted successfully.</p>
+        <p><b>Startup Name:</b> {startup_name}</p>
+        <p><b>Sector:</b> {sector}</p>
+        <p><a href="{pitch_link}">View Pitch Deck</a></p>
+        <p><a href="{resume_link}">View Resume</a></p>
+        <p><a href="{pan_link}">View PAN Card</a></p>
+        <p><a href="{certificate_link}">View Certificate</a></p>
+        <p><a href="{business_link}">View Business Plan</a></p>
+        <p>Regards,<br>AIC Team</p>
+        """
+        thr1 = threading.Thread(target=send_async_email, args=[app, msg])
+        thr1.start()
 
-            admin_msg = Message(
-                subject=f'New Startup Application - {startup_name}',
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[ADMIN_EMAIL]
-            )
-            admin_msg.html = f"""
-            <h2>New Startup Application</h2>
-            <p><b>Startup Name:</b> {startup_name}</p>
-            <p><b>Founder Name:</b> {founder_name}</p>
-            <p><b>Founder Email:</b> {email}</p>
-            <p><b>Sector:</b> {sector}</p>
-            <p><a href="{pitch_link}">View Pitch Deck</a></p>
-            <p><a href="{resume_link}">View Resume</a></p>
-            <p><a href="{pan_link}">View PAN Card</a></p>
-            <p><a href="{certificate_link}">View Certificate</a></p>
-            <p><a href="{business_link}">View Business Plan</a></p>
-            <p>Regards,<br>AIC Automated System</p>
-            """
-            mail.send(admin_msg)
-        except Exception as mail_error:
-            print("Mail Sending Error:", str(mail_error))
+        # --- Async Email for Admin ---
+        admin_msg = Message(
+            subject=f'New Startup Application - {startup_name}',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[ADMIN_EMAIL]
+        )
+        admin_msg.html = f"""
+        <h2>New Startup Application</h2>
+        <p><b>Startup Name:</b> {startup_name}</p>
+        <p><b>Founder Name:</b> {founder_name}</p>
+        <p><b>Founder Email:</b> {email}</p>
+        <p><b>Sector:</b> {sector}</p>
+        <p><a href="{pitch_link}">View Pitch Deck</a></p>
+        <p><a href="{resume_link}">View Resume</a></p>
+        <p><a href="{pan_link}">View PAN Card</a></p>
+        <p><a href="{certificate_link}">View Certificate</a></p>
+        <p><a href="{business_link}">View Business Plan</a></p>
+        <p>Regards,<br>AIC Automated System</p>
+        """
+        thr2 = threading.Thread(target=send_async_email, args=[app, admin_msg])
+        thr2.start()
 
-        return jsonify({"message": "Application Submitted Successfully"}), 200
+        return jsonify({"message": "Application Submitted Successfully & Emails Sent"}), 200
 
     except Exception as e:
         print("ERROR:", str(e))
@@ -206,7 +217,7 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 # ======================================
-# UPDATE STATUS (FIXED FOR DATABASE LOCK)
+# UPDATE STATUS (FIXED WITH ASYNC EMAIL)
 # ======================================
 @app.route('/update-status/<int:id>', methods=['POST'])
 def update_status(id):
@@ -225,20 +236,18 @@ def update_status(id):
         conn.close()
         return jsonify({"error": "Startup not found"}), 404
 
-    # 1. Pehle database update karke commit aur close kar do taaki lock turant khul jaye
     conn.execute("UPDATE startups SET status = ? WHERE id = ?", (status, id))
     conn.commit()
     conn.close()
 
-    # 2. Database band hone ke BAAD email bhejo, taaki lock ka koi scene na rahe
-    try:
-        if status == "Approved":
-            msg = Message(
-                subject="Startup Application Approved",
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[startup["email"]]
-            )
-            msg.body = f"""Hello {startup['founder_name']},
+    # Background Mail Sending Block
+    if status == "Approved":
+        msg = Message(
+            subject="Startup Application Approved",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[startup["email"]]
+        )
+        msg.body = f"""Hello {startup['founder_name']},
 
 Congratulations! Your startup application has been APPROVED.
 
@@ -247,15 +256,16 @@ Sector: {startup['sector']}
 
 Regards,
 AIC Team"""
-            mail.send(msg)
+        thr = threading.Thread(target=send_async_email, args=[app, msg])
+        thr.start()
 
-        elif status == "Rejected":
-            msg = Message(
-                subject="Startup Application Rejected",
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[startup["email"]]
-            )
-            msg.body = f"""Hello {startup['founder_name']},
+    elif status == "Rejected":
+        msg = Message(
+            subject="Startup Application Rejected",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[startup["email"]]
+        )
+        msg.body = f"""Hello {startup['founder_name']},
 
 We regret to inform you that your startup application has been rejected.
 
@@ -263,10 +273,8 @@ Startup Name: {startup['startup_name']}
 
 Regards,
 AIC Team"""
-            mail.send(msg)
-    except Exception as mail_error:
-        print("Mail Error during status update:", str(mail_error))
-        # Email fail bhi ho jaye toh dashboard par success message chala jayega aur db update ho chuka hoga.
+        thr = threading.Thread(target=send_async_email, args=[app, msg])
+        thr.start()
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
