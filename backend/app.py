@@ -2,24 +2,10 @@ import os
 import sqlite3
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app, origins="*")
-
-# ======================================
-# EMAIL CONFIGURATION (Standard TLS 587)
-# ======================================
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'usaai4279@gmail.com'
-app.config['MAIL_PASSWORD'] = 'bhbtlckyucwxcwzz'
-
-mail = Mail(app)
-ADMIN_EMAIL = 'Rohity8824@gmail.com'
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -68,10 +54,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
 def home():
-    return "Backend Running Successfully"
+    return "Backend Running Safely Without Email Block"
 
 # ======================================
-# REGISTER ROUTE
+# REGISTER ROUTE (Bina Email ke fast response)
 # ======================================
 @app.route('/register', methods=['POST'])
 def register():
@@ -104,7 +90,7 @@ def register():
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
 
-        # 1. PEHLE DATABASE KA KAAM KHATAM KARO
+        # Database insertion
         conn = get_db_connection()
         conn.execute(
             '''INSERT INTO startups
@@ -113,43 +99,9 @@ def register():
             (startup_name, founder_name, email, sector, pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name)
         )
         conn.commit()
-        conn.close() # <-- DATABASE YAHA CLOSE HO GAYA (Ab lock hone ka chance zero hai)
+        conn.close() 
 
-        base_url = "https://pre-incubation-backend.onrender.com"
-        pitch_link = f"{base_url}/download/{pitch_deck_name}"
-        resume_link = f"{base_url}/download/{resume_name}"
-        pan_link = f"{base_url}/download/{pan_card_name}"
-        certificate_link = f"{base_url}/download/{certificate_name}"
-        business_link = f"{base_url}/download/{business_plan_name}"
-
-        # 2. AB DIRECTLY (SYNCHRONOUSLY) MAILS BHEJO
-        try:
-            # User Email
-            msg = Message(
-                subject='AIC Pre-Incubation Application Submitted',
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[email]
-            )
-            msg.html = f"""<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"""
-            mail.send(msg)
-            print("--> User email sent successfully!")
-
-            # Admin Email
-            admin_msg = Message(
-                subject=f'New Startup Application - {startup_name}',
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[ADMIN_EMAIL]
-            )
-            admin_msg.html = f"""<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"""
-            mail.send(admin_msg)
-            print("--> Admin email sent successfully!")
-
-        except Exception as mail_error:
-            print("!!! MAIL SYSTEM ERROR !!!:", str(mail_error))
-            # Agar email fail bhi ho jaye, toh data save ho chuka hai, user ko crash mat dikhao
-            return jsonify({"message": "Application saved but email service encountered an error."}), 200
-
-        return jsonify({"message": "Application Submitted Successfully & Emails Sent!"}), 200
+        return jsonify({"message": "Application Submitted Successfully (Database Saved)"}), 200
 
     except Exception as e:
         print("CRITICAL ERROR:", str(e))
@@ -167,7 +119,7 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 # ======================================
-# UPDATE STATUS
+# UPDATE STATUS (Bina Email Ke Fast Update)
 # ======================================
 @app.route('/update-status/<int:id>', methods=['POST'])
 def update_status(id):
@@ -185,20 +137,7 @@ def update_status(id):
 
     conn.execute("UPDATE startups SET status = ? WHERE id = ?", (status, id))
     conn.commit()
-    conn.close() # <-- DB Pura close ho gaya
-
-    # AB EMAIL BHEJO DIRECTLY
-    try:
-        msg = Message(
-            subject=f"Startup Application {status}",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[startup["email"]]
-        )
-        msg.body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
-        mail.send(msg)
-        print(f"--> Status email ({status}) sent successfully!")
-    except Exception as mail_error:
-        print("!!! STATUS MAIL ERROR !!!:", str(mail_error))
+    conn.close()
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
