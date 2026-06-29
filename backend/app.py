@@ -1,6 +1,6 @@
 import os
 import sqlite3
-import threading  # <-- BACKGROUND EMAIL KE LIYE ADD KIYA
+import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -10,11 +10,12 @@ app = Flask(__name__)
 CORS(app, origins="*")
 
 # ======================================
-# EMAIL CONFIGURATION
+# EMAIL CONFIGURATION (RE-VERIFIED)
 # ======================================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_PORT'] = 465  # <-- 587 se badal kar 465 kiya (More stable for Render)
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True   # <-- SSL ON kiya
 app.config['MAIL_USERNAME'] = 'usaai4279@gmail.com'
 app.config['MAIL_PASSWORD'] = 'bhbtlckyucwxcwzz'
 
@@ -22,23 +23,15 @@ mail = Mail(app)
 ADMIN_EMAIL = 'Rohity8824@gmail.com'
 
 # ======================================
-# BACKGROUND EMAIL HELPER
+# BACKGROUND EMAIL HELPER (WITH BETTER ERROR LOGGING)
 # ======================================
-def send_async_email(app, msg):
-    with app.app_context():
+def send_async_email(flask_app, msg):
+    with flask_app.app_context():
         try:
             mail.send(msg)
+            print("!!! EMAIL SENT SUCCESSFULLY !!!")  # <-- Logs mein check karne ke liye
         except Exception as e:
-            print("Async Mail Error:", str(e))
-
-# ======================================
-# FILE UPLOAD CONFIGURATION
-# ======================================
-UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+            print("!!! ASYNC MAIL CRITICAL ERROR !!!:", str(e))  # <-- Asli wajah yahan print hogi
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -46,13 +39,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def get_db_connection():
     conn = sqlite3.connect('startups.db', timeout=30, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=30000")  # 30 seconds
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
     conn = get_db_connection()
-    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute('''
     CREATE TABLE IF NOT EXISTS startups (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,20 +63,20 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Reset corrupted database on startup
 try:
     conn = sqlite3.connect('startups.db', timeout=30)
     conn.execute("PRAGMA integrity_check")
     conn.close()
 except:
-    import os
     if os.path.exists('startups.db'):
         os.remove('startups.db')
     init_db()
 
-# ======================================
-# HOME ROUTE
-# ======================================
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 @app.route('/')
 def home():
     return "Backend Running Successfully"
@@ -101,7 +93,6 @@ def register():
         sector = request.form.get('sector')
 
         required_files = ['pitchDeck', 'resume', 'panCard', 'certificate', 'businessPlan']
-
         for f in required_files:
             if f not in request.files:
                 return jsonify({"error": f"{f} is missing"}), 400
@@ -112,12 +103,8 @@ def register():
         certificate = request.files['certificate']
         business_plan = request.files['businessPlan']
 
-        if not pitch_deck.filename.lower().endswith('.pdf'):
-            return jsonify({"error": "Pitch Deck must be PDF"}), 400
-        if not resume.filename.lower().endswith('.pdf'):
-            return jsonify({"error": "Resume must be PDF"}), 400
-        if not business_plan.filename.lower().endswith('.pdf'):
-            return jsonify({"error": "Business Plan must be PDF"}), 400
+        if not pitch_deck.filename.lower().endswith('.pdf') or not resume.filename.lower().endswith('.pdf') or not business_plan.filename.lower().endswith('.pdf'):
+            return jsonify({"error": "Required files must be PDF"}), 400
 
         pitch_deck_name = secure_filename(pitch_deck.filename)
         resume_name = secure_filename(resume.filename)
@@ -148,87 +135,54 @@ def register():
         certificate_link = f"{base_url}/download/{certificate_name}"
         business_link = f"{base_url}/download/{business_plan_name}"
 
-        # --- Async Email for User ---
+        # --- User Email ---
         msg = Message(
             subject='AIC Pre-Incubation Application Submitted',
             sender=app.config['MAIL_USERNAME'],
             recipients=[email]
         )
-        msg.html = f"""
-        <h2>Application Submitted Successfully</h2>
-        <p>Hello {founder_name},</p>
-        <p>Your startup application has been submitted successfully.</p>
-        <p><b>Startup Name:</b> {startup_name}</p>
-        <p><b>Sector:</b> {sector}</p>
-        <p><a href="{pitch_link}">View Pitch Deck</a></p>
-        <p><a href="{resume_link}">View Resume</a></p>
-        <p><a href="{pan_link}">View PAN Card</a></p>
-        <p><a href="{certificate_link}">View Certificate</a></p>
-        <p><a href="{business_link}">View Business Plan</a></p>
-        <p>Regards,<br>AIC Team</p>
-        """
-        thr1 = threading.Thread(target=send_async_email, args=[app, msg])
-        thr1.start()
+        msg.html = f"""<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"""
+        
+        # Pass current_app context properly
+        threading.Thread(target=send_async_email, args=(app, msg)).start()
 
-        # --- Async Email for Admin ---
+        # --- Admin Email ---
         admin_msg = Message(
             subject=f'New Startup Application - {startup_name}',
             sender=app.config['MAIL_USERNAME'],
             recipients=[ADMIN_EMAIL]
         )
-        admin_msg.html = f"""
-        <h2>New Startup Application</h2>
-        <p><b>Startup Name:</b> {startup_name}</p>
-        <p><b>Founder Name:</b> {founder_name}</p>
-        <p><b>Founder Email:</b> {email}</p>
-        <p><b>Sector:</b> {sector}</p>
-        <p><a href="{pitch_link}">View Pitch Deck</a></p>
-        <p><a href="{resume_link}">View Resume</a></p>
-        <p><a href="{pan_link}">View PAN Card</a></p>
-        <p><a href="{certificate_link}">View Certificate</a></p>
-        <p><a href="{business_link}">View Business Plan</a></p>
-        <p>Regards,<br>AIC Automated System</p>
-        """
-        thr2 = threading.Thread(target=send_async_email, args=[app, admin_msg])
-        thr2.start()
+        admin_msg.html = f"""<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"""
+        
+        threading.Thread(target=send_async_email, args=(app, admin_msg)).start()
 
-        return jsonify({"message": "Application Submitted Successfully & Emails Sent"}), 200
+        return jsonify({"message": "Application Submitted Successfully & Emails Triggered"}), 200
 
     except Exception as e:
         print("ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
 
-# ======================================
-# GET STARTUPS
-# ======================================
 @app.route('/startups', methods=['GET'])
 def get_startups():
     conn = get_db_connection()
     rows = conn.execute("SELECT * FROM startups").fetchall()
     conn.close()
-    startups = [dict(row) for row in rows]
-    return jsonify(startups)
+    return jsonify([dict(row) for row in rows])
 
-# ======================================
-# DOWNLOAD FILE
-# ======================================
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 # ======================================
-# UPDATE STATUS (FIXED WITH ASYNC EMAIL)
+# UPDATE STATUS
 # ======================================
 @app.route('/update-status/<int:id>', methods=['POST'])
 def update_status(id):
     data = request.json
-    if not data:
-        return jsonify({"error": "No data received"}), 400
-
-    status = data.get('status')
-    if not status:
+    if not data or 'status' not in data:
         return jsonify({"error": "Status is required"}), 400
 
+    status = data.get('status')
     conn = get_db_connection()
     startup = conn.execute("SELECT * FROM startups WHERE id = ?", (id,)).fetchone()
     
@@ -240,47 +194,17 @@ def update_status(id):
     conn.commit()
     conn.close()
 
-    # Background Mail Sending Block
-    if status == "Approved":
-        msg = Message(
-            subject="Startup Application Approved",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[startup["email"]]
-        )
-        msg.body = f"""Hello {startup['founder_name']},
-
-Congratulations! Your startup application has been APPROVED.
-
-Startup Name: {startup['startup_name']}
-Sector: {startup['sector']}
-
-Regards,
-AIC Team"""
-        thr = threading.Thread(target=send_async_email, args=[app, msg])
-        thr.start()
-
-    elif status == "Rejected":
-        msg = Message(
-            subject="Startup Application Rejected",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[startup["email"]]
-        )
-        msg.body = f"""Hello {startup['founder_name']},
-
-We regret to inform you that your startup application has been rejected.
-
-Startup Name: {startup['startup_name']}
-
-Regards,
-AIC Team"""
-        thr = threading.Thread(target=send_async_email, args=[app, msg])
-        thr.start()
+    msg = Message(
+        subject=f"Startup Application {status}",
+        sender=app.config['MAIL_USERNAME'],
+        recipients=[startup["email"]]
+    )
+    msg.body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
+    
+    threading.Thread(target=send_async_email, args=(app, msg)).start()
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
-# ======================================
-# RUN APP
-# ======================================
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
