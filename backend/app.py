@@ -59,6 +59,7 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
+
 # Reset corrupted database on startup
 try:
     conn = sqlite3.connect('startups.db', timeout=30)
@@ -136,47 +137,51 @@ def register():
         certificate_link = f"{base_url}/download/{certificate_name}"
         business_link = f"{base_url}/download/{business_plan_name}"
 
-        msg = Message(
-            subject='AIC Pre-Incubation Application Submitted',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[email]
-        )
-        msg.html = f"""
-        <h2>Application Submitted Successfully</h2>
-        <p>Hello {founder_name},</p>
-        <p>Your startup application has been submitted successfully.</p>
-        <p><b>Startup Name:</b> {startup_name}</p>
-        <p><b>Sector:</b> {sector}</p>
-        <p><a href="{pitch_link}">View Pitch Deck</a></p>
-        <p><a href="{resume_link}">View Resume</a></p>
-        <p><a href="{pan_link}">View PAN Card</a></p>
-        <p><a href="{certificate_link}">View Certificate</a></p>
-        <p><a href="{business_link}">View Business Plan</a></p>
-        <p>Regards,<br>AIC Team</p>
-        """
-        mail.send(msg)
+        # Email sending blocks wrapped in try-except so they don't break the response
+        try:
+            msg = Message(
+                subject='AIC Pre-Incubation Application Submitted',
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[email]
+            )
+            msg.html = f"""
+            <h2>Application Submitted Successfully</h2>
+            <p>Hello {founder_name},</p>
+            <p>Your startup application has been submitted successfully.</p>
+            <p><b>Startup Name:</b> {startup_name}</p>
+            <p><b>Sector:</b> {sector}</p>
+            <p><a href="{pitch_link}">View Pitch Deck</a></p>
+            <p><a href="{resume_link}">View Resume</a></p>
+            <p><a href="{pan_link}">View PAN Card</a></p>
+            <p><a href="{certificate_link}">View Certificate</a></p>
+            <p><a href="{business_link}">View Business Plan</a></p>
+            <p>Regards,<br>AIC Team</p>
+            """
+            mail.send(msg)
 
-        admin_msg = Message(
-            subject=f'New Startup Application - {startup_name}',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[ADMIN_EMAIL]
-        )
-        admin_msg.html = f"""
-        <h2>New Startup Application</h2>
-        <p><b>Startup Name:</b> {startup_name}</p>
-        <p><b>Founder Name:</b> {founder_name}</p>
-        <p><b>Founder Email:</b> {email}</p>
-        <p><b>Sector:</b> {sector}</p>
-        <p><a href="{pitch_link}">View Pitch Deck</a></p>
-        <p><a href="{resume_link}">View Resume</a></p>
-        <p><a href="{pan_link}">View PAN Card</a></p>
-        <p><a href="{certificate_link}">View Certificate</a></p>
-        <p><a href="{business_link}">View Business Plan</a></p>
-        <p>Regards,<br>AIC Automated System</p>
-        """
-        mail.send(admin_msg)
+            admin_msg = Message(
+                subject=f'New Startup Application - {startup_name}',
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[ADMIN_EMAIL]
+            )
+            admin_msg.html = f"""
+            <h2>New Startup Application</h2>
+            <p><b>Startup Name:</b> {startup_name}</p>
+            <p><b>Founder Name:</b> {founder_name}</p>
+            <p><b>Founder Email:</b> {email}</p>
+            <p><b>Sector:</b> {sector}</p>
+            <p><a href="{pitch_link}">View Pitch Deck</a></p>
+            <p><a href="{resume_link}">View Resume</a></p>
+            <p><a href="{pan_link}">View PAN Card</a></p>
+            <p><a href="{certificate_link}">View Certificate</a></p>
+            <p><a href="{business_link}">View Business Plan</a></p>
+            <p>Regards,<br>AIC Automated System</p>
+            """
+            mail.send(admin_msg)
+        except Exception as mail_error:
+            print("Mail Sending Error:", str(mail_error))
 
-        return jsonify({"message": "Application Submitted Successfully & Emails Sent"}), 200
+        return jsonify({"message": "Application Submitted Successfully"}), 200
 
     except Exception as e:
         print("ERROR:", str(e))
@@ -201,7 +206,7 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 # ======================================
-# UPDATE STATUS
+# UPDATE STATUS (FIXED FOR DATABASE LOCK)
 # ======================================
 @app.route('/update-status/<int:id>', methods=['POST'])
 def update_status(id):
@@ -220,15 +225,20 @@ def update_status(id):
         conn.close()
         return jsonify({"error": "Startup not found"}), 404
 
+    # 1. Pehle database update karke commit aur close kar do taaki lock turant khul jaye
     conn.execute("UPDATE startups SET status = ? WHERE id = ?", (status, id))
+    conn.commit()
+    conn.close()
 
-    if status == "Approved":
-        msg = Message(
-            subject="Startup Application Approved",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[startup["email"]]
-        )
-        msg.body = f"""Hello {startup['founder_name']},
+    # 2. Database band hone ke BAAD email bhejo, taaki lock ka koi scene na rahe
+    try:
+        if status == "Approved":
+            msg = Message(
+                subject="Startup Application Approved",
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[startup["email"]]
+            )
+            msg.body = f"""Hello {startup['founder_name']},
 
 Congratulations! Your startup application has been APPROVED.
 
@@ -237,15 +247,15 @@ Sector: {startup['sector']}
 
 Regards,
 AIC Team"""
-        mail.send(msg)
+            mail.send(msg)
 
-    elif status == "Rejected":
-        msg = Message(
-            subject="Startup Application Rejected",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[startup["email"]]
-        )
-        msg.body = f"""Hello {startup['founder_name']},
+        elif status == "Rejected":
+            msg = Message(
+                subject="Startup Application Rejected",
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[startup["email"]]
+            )
+            msg.body = f"""Hello {startup['founder_name']},
 
 We regret to inform you that your startup application has been rejected.
 
@@ -253,10 +263,10 @@ Startup Name: {startup['startup_name']}
 
 Regards,
 AIC Team"""
-        mail.send(msg)
-
-    conn.commit()
-    conn.close()
+            mail.send(msg)
+    except Exception as mail_error:
+        print("Mail Error during status update:", str(mail_error))
+        # Email fail bhi ho jaye toh dashboard par success message chala jayega aur db update ho chuka hoga.
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 

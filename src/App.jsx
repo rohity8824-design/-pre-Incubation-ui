@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 const BASE_URL = "https://pre-incubation-backend.onrender.com";
 
 export default function App() {
-
   const [formData, setFormData] = useState({
     startupName: "",
     founderName: "",
@@ -21,6 +20,10 @@ export default function App() {
   });
 
   const [startups, setStartups] = useState([]);
+  
+  // LOADING STATES ADDED HERE
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null); 
 
   const fetchStartups = async () => {
     try {
@@ -37,16 +40,23 @@ export default function App() {
   }, []);
 
   const updateStatus = async (id, status) => {
+    setActionLoadingId(id); // Set loading for this specific row
     try {
-      await fetch(`${BASE_URL}/update-status/${id}`, {
+      const response = await fetch(`${BASE_URL}/update-status/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: status }),
       });
-      fetchStartups();
+      if (!response.ok) {
+        const errData = await response.json();
+        alert(errData.error || "Status Update Failed");
+      }
+      await fetchStartups();
     } catch (error) {
       console.log(error);
       alert("Status Update Failed");
+    } finally {
+      setActionLoadingId(null); // Stop loading
     }
   };
 
@@ -56,6 +66,9 @@ export default function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true); // Start Form Loading
     try {
       const data = new FormData();
       data.append("startupName", formData.startupName);
@@ -79,13 +92,15 @@ export default function App() {
         alert(result.message);
         setFormData({ startupName: "", founderName: "", email: "", sector: "" });
         setFiles({ pitchDeck: null, resume: null, panCard: null, certificate: null, businessPlan: null });
-        fetchStartups();
+        await fetchStartups();
       } else {
         alert(result.error);
       }
     } catch (error) {
       console.log(error);
       alert("Backend Connection Error");
+    } finally {
+      setIsSubmitting(false); // Stop Form Loading
     }
   };
 
@@ -127,21 +142,21 @@ export default function App() {
           <div className="form-field">
             <label>Startup Name</label>
             <input type="text" placeholder="e.g. GreenFarm AI"
-              name="startupName" value={formData.startupName} onChange={handleChange}/>
+              name="startupName" value={formData.startupName} onChange={handleChange} disabled={isSubmitting}/>
           </div>
           <div className="form-field">
             <label>Founder Name</label>
             <input type="text" placeholder="e.g. Rohit Sharma"
-              name="founderName" value={formData.founderName} onChange={handleChange}/>
+              name="founderName" value={formData.founderName} onChange={handleChange} disabled={isSubmitting}/>
           </div>
           <div className="form-field">
             <label>Email Address</label>
             <input type="email" placeholder="founder@startup.com"
-              name="email" value={formData.email} onChange={handleChange}/>
+              name="email" value={formData.email} onChange={handleChange} disabled={isSubmitting}/>
           </div>
           <div className="form-field">
             <label>Sector</label>
-            <select name="sector" value={formData.sector} onChange={handleChange}>
+            <select name="sector" value={formData.sector} onChange={handleChange} disabled={isSubmitting}>
               <option value="">Select Sector</option>
               <option>Agritech</option>
               <option>Healthtech</option>
@@ -160,33 +175,34 @@ export default function App() {
         <div className="file-grid">
           <div className="file-upload">
             <label>Pitch Deck (PDF)</label>
-            <input type="file" accept=".pdf"
+            <input type="file" accept=".pdf" disabled={isSubmitting}
               onChange={(e) => setFiles({...files, pitchDeck: e.target.files[0]})}/>
           </div>
           <div className="file-upload">
             <label>Resume / CV (PDF)</label>
-            <input type="file" accept=".pdf"
+            <input type="file" accept=".pdf" disabled={isSubmitting}
               onChange={(e) => setFiles({...files, resume: e.target.files[0]})}/>
           </div>
           <div className="file-upload">
             <label>PAN Card (PDF/Image)</label>
-            <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg" disabled={isSubmitting}
               onChange={(e) => setFiles({...files, panCard: e.target.files[0]})}/>
           </div>
           <div className="file-upload">
             <label>Registration Certificate</label>
-            <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg" disabled={isSubmitting}
               onChange={(e) => setFiles({...files, certificate: e.target.files[0]})}/>
           </div>
           <div className="file-upload" style={{gridColumn:"span 2"}}>
             <label>Business Plan (PDF)</label>
-            <input type="file" accept=".pdf"
+            <input type="file" accept=".pdf" disabled={isSubmitting}
               onChange={(e) => setFiles({...files, businessPlan: e.target.files[0]})}/>
           </div>
         </div>
 
-        <button className="submit-btn" onClick={handleSubmit}>
-          Submit Application
+        {/* Updated Button to show Loading */}
+        <button className="submit-btn" onClick={handleSubmit} disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.7 : 1 }}>
+          {isSubmitting ? "Submitting Application..." : "Submit Application"}
         </button>
       </div>
 
@@ -228,8 +244,14 @@ export default function App() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn-approve" onClick={() => updateStatus(startup.id, "Approved")}>Approve</button>
-                      <button className="btn-reject" onClick={() => updateStatus(startup.id, "Rejected")}>Reject</button>
+                      {actionLoadingId === startup.id ? (
+                        <span style={{ fontSize: "12px", color: "#666", fontWeight: "600" }}>Updating...</span>
+                      ) : (
+                        <>
+                          <button className="btn-approve" onClick={() => updateStatus(startup.id, "Approved")}>Approve</button>
+                          <button className="btn-reject" onClick={() => updateStatus(startup.id, "Rejected")}>Reject</button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))
