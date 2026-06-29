@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -10,12 +9,12 @@ app = Flask(__name__)
 CORS(app, origins="*")
 
 # ======================================
-# EMAIL CONFIGURATION (RE-VERIFIED)
+# EMAIL CONFIGURATION (Standard TLS 587)
 # ======================================
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465  # <-- 587 se badal kar 465 kiya (More stable for Render)
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True   # <-- SSL ON kiya
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = 'usaai4279@gmail.com'
 app.config['MAIL_PASSWORD'] = 'bhbtlckyucwxcwzz'
 
@@ -23,21 +22,10 @@ mail = Mail(app)
 ADMIN_EMAIL = 'Rohity8824@gmail.com'
 
 # ======================================
-# BACKGROUND EMAIL HELPER (WITH BETTER ERROR LOGGING)
-# ======================================
-def send_async_email(flask_app, msg):
-    with flask_app.app_context():
-        try:
-            mail.send(msg)
-            print("!!! EMAIL SENT SUCCESSFULLY !!!")  # <-- Logs mein check karne ke liye
-        except Exception as e:
-            print("!!! ASYNC MAIL CRITICAL ERROR !!!:", str(e))  # <-- Asli wajah yahan print hogi
-
-# ======================================
 # DATABASE HELPER FUNCTION
 # ======================================
 def get_db_connection():
-    conn = sqlite3.connect('startups.db', timeout=30, check_same_thread=False)
+    conn = sqlite3.connect('startups.db', timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
     conn.row_factory = sqlite3.Row
@@ -63,6 +51,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Initialize DB safely
 try:
     conn = sqlite3.connect('startups.db', timeout=30)
     conn.execute("PRAGMA integrity_check")
@@ -103,9 +92,6 @@ def register():
         certificate = request.files['certificate']
         business_plan = request.files['businessPlan']
 
-        if not pitch_deck.filename.lower().endswith('.pdf') or not resume.filename.lower().endswith('.pdf') or not business_plan.filename.lower().endswith('.pdf'):
-            return jsonify({"error": "Required files must be PDF"}), 400
-
         pitch_deck_name = secure_filename(pitch_deck.filename)
         resume_name = secure_filename(resume.filename)
         pan_card_name = secure_filename(pan_card.filename)
@@ -118,6 +104,7 @@ def register():
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
 
+        # 1. PEHLE DATABASE KA KAAM KHATAM KARO
         conn = get_db_connection()
         conn.execute(
             '''INSERT INTO startups
@@ -126,7 +113,7 @@ def register():
             (startup_name, founder_name, email, sector, pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name)
         )
         conn.commit()
-        conn.close()
+        conn.close() # <-- DATABASE YAHA CLOSE HO GAYA (Ab lock hone ka chance zero hai)
 
         base_url = "https://pre-incubation-backend.onrender.com"
         pitch_link = f"{base_url}/download/{pitch_deck_name}"
@@ -135,31 +122,37 @@ def register():
         certificate_link = f"{base_url}/download/{certificate_name}"
         business_link = f"{base_url}/download/{business_plan_name}"
 
-        # --- User Email ---
-        msg = Message(
-            subject='AIC Pre-Incubation Application Submitted',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[email]
-        )
-        msg.html = f"""<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"""
-        
-        # Pass current_app context properly
-        threading.Thread(target=send_async_email, args=(app, msg)).start()
+        # 2. AB DIRECTLY (SYNCHRONOUSLY) MAILS BHEJO
+        try:
+            # User Email
+            msg = Message(
+                subject='AIC Pre-Incubation Application Submitted',
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[email]
+            )
+            msg.html = f"""<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"""
+            mail.send(msg)
+            print("--> User email sent successfully!")
 
-        # --- Admin Email ---
-        admin_msg = Message(
-            subject=f'New Startup Application - {startup_name}',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[ADMIN_EMAIL]
-        )
-        admin_msg.html = f"""<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"""
-        
-        threading.Thread(target=send_async_email, args=(app, admin_msg)).start()
+            # Admin Email
+            admin_msg = Message(
+                subject=f'New Startup Application - {startup_name}',
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[ADMIN_EMAIL]
+            )
+            admin_msg.html = f"""<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"""
+            mail.send(admin_msg)
+            print("--> Admin email sent successfully!")
 
-        return jsonify({"message": "Application Submitted Successfully & Emails Triggered"}), 200
+        except Exception as mail_error:
+            print("!!! MAIL SYSTEM ERROR !!!:", str(mail_error))
+            # Agar email fail bhi ho jaye, toh data save ho chuka hai, user ko crash mat dikhao
+            return jsonify({"message": "Application saved but email service encountered an error."}), 200
+
+        return jsonify({"message": "Application Submitted Successfully & Emails Sent!"}), 200
 
     except Exception as e:
-        print("ERROR:", str(e))
+        print("CRITICAL ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route('/startups', methods=['GET'])
@@ -192,16 +185,20 @@ def update_status(id):
 
     conn.execute("UPDATE startups SET status = ? WHERE id = ?", (status, id))
     conn.commit()
-    conn.close()
+    conn.close() # <-- DB Pura close ho gaya
 
-    msg = Message(
-        subject=f"Startup Application {status}",
-        sender=app.config['MAIL_USERNAME'],
-        recipients=[startup["email"]]
-    )
-    msg.body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
-    
-    threading.Thread(target=send_async_email, args=(app, msg)).start()
+    # AB EMAIL BHEJO DIRECTLY
+    try:
+        msg = Message(
+            subject=f"Startup Application {status}",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[startup["email"]]
+        )
+        msg.body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
+        mail.send(msg)
+        print(f"--> Status email ({status}) sent successfully!")
+    except Exception as mail_error:
+        print("!!! STATUS MAIL ERROR !!!:", str(mail_error))
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
