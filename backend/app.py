@@ -1,37 +1,53 @@
 import os
 import sqlite3
+import smtplib
 import threading
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app, origins="*")
 
 # ======================================
-# NEW EMAIL CONFIGURATION (UPDATED)
+# EMAIL CONFIGURATION (SMTP DIRECT)
 # ======================================
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'rohity8824@gmail.com'  # <-- Naya Email
-app.config['MAIL_PASSWORD'] = 'eympqxrusnzifzds'      # <-- Naya App Password
-
-mail = Mail(app)
-ADMIN_EMAIL = 'rohity8824@gmail.com'  # Admin notification bhi isi par aayegi
+SMTP_SERVER = 'smtp.gmail.com'
+SMTP_PORT = 587
+SENDER_EMAIL = 'rohity8824@gmail.com'
+SENDER_PASSWORD = 'eympqxrusnzifzds'
+ADMIN_EMAIL = 'rohity8824@gmail.com'
 
 # ======================================
-# BACKGROUND EMAIL HELPER (SAFE & ASYNC)
+# DIRECT SMTP BACKGROUND HELPER
 # ======================================
-def send_async_email(flask_app, msg):
-    with flask_app.app_context():
+def send_direct_email(recipient, subject, html_content, is_html=True):
+    def email_thread():
         try:
-            mail.send(msg)
-            print("--> [BACKGROUND MAIL] Email Sent Successfully!")
+            msg = MIMEMultipart()
+            msg['From'] = SENDER_EMAIL
+            msg['To'] = recipient
+            msg['Subject'] = subject
+            
+            if is_html:
+                msg.attach(MIMEText(html_content, 'html'))
+            else:
+                msg.attach(MIMEText(html_content, 'plain'))
+                
+            # Connect directly to Gmail SMTP
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+            server.starttls()  # Upgrade connection to secure TLS
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
+            server.quit()
+            print(f"--> [SMTP SUCCESS] Email sent to {recipient}")
         except Exception as e:
-            print("--> [BACKGROUND MAIL] Critical Error Occurred:", str(e))
+            print(f"--> [SMTP ERROR] Failed to send email to {recipient}: {str(e)}")
+
+    # Start sending mail in background so it never freezes the UI
+    threading.Thread(target=email_thread).start()
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -63,7 +79,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Initialize DB safely
 try:
     conn = sqlite3.connect('startups.db', timeout=30)
     conn.execute("PRAGMA integrity_check")
@@ -80,7 +95,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
 def home():
-    return "Backend Running Safely With Background Email Activated"
+    return "Backend Running Safely With Direct SMTP"
 
 # ======================================
 # REGISTER ROUTE
@@ -116,7 +131,7 @@ def register():
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
 
-        # 1. Save to Database First
+        # Save to Database
         conn = get_db_connection()
         conn.execute(
             '''INSERT INTO startups
@@ -127,26 +142,14 @@ def register():
         conn.commit()
         conn.close() 
 
-        # 2. Trigger Background Mails safely
-        # User Confirmation Mail
-        msg = Message(
-            subject='AIC Pre-Incubation Application Submitted',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[email]
-        )
-        msg.html = f"""<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"""
-        threading.Thread(target=send_async_email, args=(app, msg)).start()
+        # Direct Async Mails Trigger
+        user_html = f"<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"
+        send_direct_email(email, 'AIC Pre-Incubation Application Submitted', user_html)
 
-        # Admin Notification Mail
-        admin_msg = Message(
-            subject=f'New Startup Application - {startup_name}',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[ADMIN_EMAIL]
-        )
-        admin_msg.html = f"""<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"""
-        threading.Thread(target=send_async_email, args=(app, admin_msg)).start()
+        admin_html = f"<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"
+        send_direct_email(ADMIN_EMAIL, f'New Startup Application - {startup_name}', admin_html)
 
-        return jsonify({"message": "Application Submitted Successfully & Emails Triggered!"}), 200
+        return jsonify({"message": "Application Submitted Successfully!"}), 200
 
     except Exception as e:
         print("CRITICAL ERROR:", str(e))
@@ -184,14 +187,9 @@ def update_status(id):
     conn.commit()
     conn.close()
 
-    # Trigger Background Status Update Email
-    msg = Message(
-        subject=f"Startup Application {status}",
-        sender=app.config['MAIL_USERNAME'],
-        recipients=[startup["email"]]
-    )
-    msg.body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
-    threading.Thread(target=send_async_email, args=(app, msg)).start()
+    # Direct Async Status Email
+    status_body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
+    send_direct_email(startup["email"], f"Startup Application {status}", status_body, is_html=False)
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
