@@ -1,11 +1,37 @@
 import os
 import sqlite3
+import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app, origins="*")
+
+# ======================================
+# NEW EMAIL CONFIGURATION (UPDATED)
+# ======================================
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'rohity8824@gmail.com'  # <-- Naya Email
+app.config['MAIL_PASSWORD'] = 'eympqxrusnzifzds'      # <-- Naya App Password
+
+mail = Mail(app)
+ADMIN_EMAIL = 'rohity8824@gmail.com'  # Admin notification bhi isi par aayegi
+
+# ======================================
+# BACKGROUND EMAIL HELPER (SAFE & ASYNC)
+# ======================================
+def send_async_email(flask_app, msg):
+    with flask_app.app_context():
+        try:
+            mail.send(msg)
+            print("--> [BACKGROUND MAIL] Email Sent Successfully!")
+        except Exception as e:
+            print("--> [BACKGROUND MAIL] Critical Error Occurred:", str(e))
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -54,10 +80,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
 def home():
-    return "Backend Running Safely Without Email Block"
+    return "Backend Running Safely With Background Email Activated"
 
 # ======================================
-# REGISTER ROUTE (Bina Email ke fast response)
+# REGISTER ROUTE
 # ======================================
 @app.route('/register', methods=['POST'])
 def register():
@@ -90,7 +116,7 @@ def register():
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
 
-        # Database insertion
+        # 1. Save to Database First
         conn = get_db_connection()
         conn.execute(
             '''INSERT INTO startups
@@ -101,7 +127,26 @@ def register():
         conn.commit()
         conn.close() 
 
-        return jsonify({"message": "Application Submitted Successfully (Database Saved)"}), 200
+        # 2. Trigger Background Mails safely
+        # User Confirmation Mail
+        msg = Message(
+            subject='AIC Pre-Incubation Application Submitted',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[email]
+        )
+        msg.html = f"""<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"""
+        threading.Thread(target=send_async_email, args=(app, msg)).start()
+
+        # Admin Notification Mail
+        admin_msg = Message(
+            subject=f'New Startup Application - {startup_name}',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[ADMIN_EMAIL]
+        )
+        admin_msg.html = f"""<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"""
+        threading.Thread(target=send_async_email, args=(app, admin_msg)).start()
+
+        return jsonify({"message": "Application Submitted Successfully & Emails Triggered!"}), 200
 
     except Exception as e:
         print("CRITICAL ERROR:", str(e))
@@ -119,7 +164,7 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 # ======================================
-# UPDATE STATUS (Bina Email Ke Fast Update)
+# UPDATE STATUS ROUTE
 # ======================================
 @app.route('/update-status/<int:id>', methods=['POST'])
 def update_status(id):
@@ -138,6 +183,15 @@ def update_status(id):
     conn.execute("UPDATE startups SET status = ? WHERE id = ?", (status, id))
     conn.commit()
     conn.close()
+
+    # Trigger Background Status Update Email
+    msg = Message(
+        subject=f"Startup Application {status}",
+        sender=app.config['MAIL_USERNAME'],
+        recipients=[startup["email"]]
+    )
+    msg.body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
+    threading.Thread(target=send_async_email, args=(app, msg)).start()
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
