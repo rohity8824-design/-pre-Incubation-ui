@@ -19,28 +19,25 @@ SENDER_EMAIL = 'rohity8824@gmail.com'
 SENDER_PASSWORD = 'eympqxrusnzifzds'
 ADMIN_EMAIL = 'rohity8824@gmail.com'
 
-def try_sending_email(recipient, subject, html_content, is_html=True):
-    # Render Network Block ko bypass karne ke liye silent try-catch
+def try_sending_email(recipient, subject, html_content):
     try:
         msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
+        msg['From'] = f"AIC Team <{SENDER_EMAIL}>"
         msg['To'] = recipient
         msg['Subject'] = subject
         
-        if is_html:
-            msg.attach(MIMEText(html_content, 'html'))
-        else:
-            msg.attach(MIMEText(html_content, 'plain'))
+        msg.attach(MIMEText(html_content, 'html'))
             
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=5) # 5 second max timeout
+        # Connect with a strict timeout so UI never freezes
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=4)
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
         server.quit()
         print(f"--> [SMTP SUCCESS] Sent to {recipient}")
     except Exception as e:
-        # Render ka [Errno 101] network unreachable yaha handle ho jayega aur server crash nahi hoga
-        print(f"--> [SMTP BLOCKED BY RENDER ENVIRONMENT]: {str(e)}")
+        # Render network block handle karne ke liye (Jaise Errno 101)
+        print(f"--> [SMTP LOG] Mail to {recipient} skipped due to Render Environment Port Block: {str(e)}")
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -88,7 +85,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
 def home():
-    return "Backend Live - Safe Mode Active"
+    return "Backend Live - Multi-Template Active"
 
 # ======================================
 # REGISTER ROUTE
@@ -124,7 +121,7 @@ def register():
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
 
-        # 1. Database mein save hamesha hoga
+        # Save to SQLite Database
         conn = get_db_connection()
         conn.execute(
             '''INSERT INTO startups
@@ -135,17 +132,43 @@ def register():
         conn.commit()
         conn.close() 
 
-        # 2. Email bhejne ka try karo, block hua toh ignore karo
-        user_html = f"<h2>Application Submitted Successfully</h2><p>Hello {founder_name},</p><p>Your startup application for <b>{startup_name}</b> has been received.</p>"
+        # 1. USER MAIL TEMPLATE (Jaise pehle jati thi)
+        user_html = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #1a73e8;">AIC Pre-Incubation Application Submitted</h2>
+            <p>Hello <b>{founder_name}</b>,</p>
+            <p>Your startup application has been submitted successfully.</p>
+            <hr style="border: 0; border-top: 1px solid #eee;" />
+            <p><b>Startup Name:</b> {startup_name}</p>
+            <p><b>Sector:</b> {sector}</p>
+            <p><b>Uploaded Pitch Deck:</b> {pitch_deck_name}</p>
+            <hr style="border: 0; border-top: 1px solid #eee;" />
+            <p>Thank you for applying to the AIC Pre-Incubation Program.</p>
+            <p>Regards,<br><b>AIC Team</b></p>
+        </div>
+        """
         try_sending_email(email, 'AIC Pre-Incubation Application Submitted', user_html)
 
-        admin_html = f"<h2>New Startup Application</h2><p><b>Startup Name:</b> {startup_name}</p><p><b>Founder:</b> {founder_name}</p>"
-        try_sending_email(ADMIN_EMAIL, f'New Startup Application - {startup_name}', admin_html)
+        # 2. ADMIN MAIL TEMPLATE (Alag subject aur alert ke saath)
+        admin_html = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; border-left: 4px solid #f44336;">
+            <h2 style="color: #f44336;">New Startup Registration Alert</h2>
+            <p>An application has been received for the Pre-Incubation portal:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Startup Name:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{startup_name}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Founder Name:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{founder_name}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Email Address:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{email}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Sector:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{sector}</td></tr>
+            </table>
+            <p>Please log in to the admin dashboard to review the uploaded documents.</p>
+        </div>
+        """
+        try_sending_email(ADMIN_EMAIL, f'ALERT: New Startup Registered - {startup_name}', admin_html)
 
         return jsonify({"message": "Application Submitted Successfully!"}), 200
 
     except Exception as e:
-        print("CRITICAL DATABASE ERROR:", str(e))
+        print("CRITICAL ERROR:", str(e))
         return jsonify({"error": f"Server Error: {str(e)}"}), 500
 
 @app.route('/startups', methods=['GET'])
@@ -177,8 +200,18 @@ def update_status(id):
     conn.commit()
     conn.close()
 
-    status_body = f"Hello {startup['founder_name']},\n\nYour application for {startup['startup_name']} has been {status}.\n\nRegards,\nAIC Team"
-    try_sending_email(startup["email"], f"Startup Application {status}", status_body, is_html=False)
+    # STATUS UPDATE MAIL TEMPLATE
+    status_html = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2>Startup Application Update</h2>
+        <p>Hello <b>{startup['founder_name']}</b>,</p>
+        <p>Your application for the startup <b>{startup['startup_name']}</b> has been reviewed.</p>
+        <p style="font-size: 16px;">Current Status: <span style="font-weight: bold; color: #1a73e8;">{status}</span></p>
+        <hr style="border: 0; border-top: 1px solid #eee;" />
+        <p>Regards,<br><b>AIC Team</b></p>
+    </div>
+    """
+    try_sending_email(startup["email"], f"Startup Application {status}", status_html)
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
 
