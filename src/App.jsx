@@ -1,7 +1,7 @@
 import "./styles.css";
 import { useState, useEffect } from "react";
 
-const BASE_URL = "https://pre-incubation-backend.onrender.com";
+const BASE_URL = "http://127.0.0.1:5000";
 
 export default function App() {
   const [formData, setFormData] = useState({

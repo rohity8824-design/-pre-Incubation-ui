@@ -1,8 +1,11 @@
 import os
 import sqlite3
 import smtplib
+import shutil
+import zipfile
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -16,7 +19,7 @@ CORS(app, origins="*")
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 SENDER_EMAIL = 'rohity8824@gmail.com'
-SENDER_PASSWORD = 'eympqxrusnzifzds'
+SENDER_PASSWORD = 'raucdepbzisshhpx'
 ADMIN_EMAIL = 'rohity8824@gmail.com'
 
 def try_sending_email(recipient, subject, html_content):
@@ -28,7 +31,6 @@ def try_sending_email(recipient, subject, html_content):
         
         msg.attach(MIMEText(html_content, 'html'))
             
-        # Connect with a strict timeout so UI never freezes
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=4)
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
@@ -36,8 +38,7 @@ def try_sending_email(recipient, subject, html_content):
         server.quit()
         print(f"--> [SMTP SUCCESS] Sent to {recipient}")
     except Exception as e:
-        # Render network block handle karne ke liye (Jaise Errno 101)
-        print(f"--> [SMTP LOG] Mail to {recipient} skipped due to Render Environment Port Block: {str(e)}")
+        print(f"--> [SMTP LOG] Mail to {recipient} skipped: {str(e)}")
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -81,6 +82,11 @@ except:
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+APPLICANT_DATA_FOLDER = 'applicant_data'
+if not os.path.exists(APPLICANT_DATA_FOLDER):
+    os.makedirs(APPLICANT_DATA_FOLDER)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
@@ -121,18 +127,42 @@ def register():
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
 
+        # ===== CREATE ORGANIZED FOLDER =====
+        timestamp = int(datetime.now().timestamp())
+        app_folder = os.path.join(APPLICANT_DATA_FOLDER, f"{startup_name}_{timestamp}")
+        if not os.path.exists(app_folder):
+            os.makedirs(app_folder)
+
+        # Copy files to organized folder
+        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], pitch_deck_name), os.path.join(app_folder, pitch_deck_name))
+        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], resume_name), os.path.join(app_folder, resume_name))
+        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], pan_card_name), os.path.join(app_folder, pan_card_name))
+        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name), os.path.join(app_folder, certificate_name))
+        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name), os.path.join(app_folder, business_plan_name))
+
+        # Create details text file
+        details_file = os.path.join(app_folder, 'applicant_details.txt')
+        with open(details_file, 'w') as f:
+            f.write(f"Startup Name: {startup_name}\n")
+            f.write(f"Founder Name: {founder_name}\n")
+            f.write(f"Email: {email}\n")
+            f.write(f"Sector: {sector}\n")
+            f.write(f"Submission Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Status: Pending\n")
+
         # Save to SQLite Database
         conn = get_db_connection()
-        conn.execute(
+        cursor = conn.execute(
             '''INSERT INTO startups
             (startup_name, founder_name, email, sector, pitch_deck, resume, pan_card, certificate, business_plan)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (startup_name, founder_name, email, sector, pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name)
         )
         conn.commit()
+        app_id = cursor.lastrowid
         conn.close() 
 
-        # 1. USER MAIL TEMPLATE (Jaise pehle jati thi)
+        # 1. USER MAIL TEMPLATE
         user_html = f"""
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #1a73e8;">AIC Pre-Incubation Application Submitted</h2>
@@ -149,7 +179,7 @@ def register():
         """
         try_sending_email(email, 'AIC Pre-Incubation Application Submitted', user_html)
 
-        # 2. ADMIN MAIL TEMPLATE (Alag subject aur alert ke saath)
+        # 2. ADMIN MAIL TEMPLATE
         admin_html = f"""
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; border-left: 4px solid #f44336;">
             <h2 style="color: #f44336;">New Startup Registration Alert</h2>
@@ -181,6 +211,29 @@ def get_startups():
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
+
+@app.route('/download-folder/<int:id>', methods=['GET'])
+def download_folder(id):
+    conn = get_db_connection()
+    startup = conn.execute("SELECT * FROM startups WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    
+    if not startup:
+        return jsonify({"error": "Application not found"}), 404
+    
+    startup_name = startup['startup_name']
+    app_folders = [f for f in os.listdir(APPLICANT_DATA_FOLDER) if f.startswith(startup_name)]
+    
+    if not app_folders:
+        return jsonify({"error": "Folder not found"}), 404
+    
+    app_folder = os.path.join(APPLICANT_DATA_FOLDER, app_folders[0])
+    zip_filename = f"{startup_name}_{id}.zip"
+    zip_path = os.path.join(app.config['UPLOAD_FOLDER'], zip_filename[:-4])
+    
+    shutil.make_archive(zip_path, 'zip', app_folder)
+    
+    return send_from_directory(app.config['UPLOAD_FOLDER'], zip_filename, as_attachment=True)
 
 @app.route('/update-status/<int:id>', methods=['POST'])
 def update_status(id):
@@ -217,4 +270,4 @@ def update_status(id):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=True)
