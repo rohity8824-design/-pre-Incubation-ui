@@ -1,7 +1,7 @@
 import "./styles.css";
 import { useState, useEffect } from "react";
 
-const BASE_URL = "http://127.0.0.1:5000";
+const BASE_URL = "https://pre-incubation-backend.onrender.com";
 
 export default function App() {
   const [formData, setFormData] = useState({
@@ -20,8 +20,6 @@ export default function App() {
   });
 
   const [startups, setStartups] = useState([]);
-  
-  // LOADING STATES ADDED HERE
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null); 
 
@@ -40,7 +38,7 @@ export default function App() {
   }, []);
 
   const updateStatus = async (id, status) => {
-    setActionLoadingId(id); // Set loading for this specific row
+    setActionLoadingId(id);
     try {
       const response = await fetch(`${BASE_URL}/update-status/${id}`, {
         method: "POST",
@@ -56,7 +54,28 @@ export default function App() {
       console.log(error);
       alert("Status Update Failed");
     } finally {
-      setActionLoadingId(null); // Stop loading
+      setActionLoadingId(null);
+    }
+  };
+
+  // ===== DOWNLOAD FOLDER FUNCTION =====
+  const downloadFolder = async (id) => {
+    try {
+      const response = await fetch(`${BASE_URL}/download-folder/${id}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `application_${id}.zip`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert('Download failed!');
+      }
+    } catch (error) {
+      console.log(error);
+      alert('Download Error');
     }
   };
 
@@ -68,7 +87,7 @@ export default function App() {
     e.preventDefault();
     if (isSubmitting) return;
 
-    setIsSubmitting(true); // Start Form Loading
+    setIsSubmitting(true);
     try {
       const data = new FormData();
       data.append("startupName", formData.startupName);
@@ -100,7 +119,7 @@ export default function App() {
       console.log(error);
       alert("Backend Connection Error");
     } finally {
-      setIsSubmitting(false); // Stop Form Loading
+      setIsSubmitting(false);
     }
   };
 
@@ -200,7 +219,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Updated Button to show Loading */}
         <button className="submit-btn" onClick={handleSubmit} disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.7 : 1 }}>
           {isSubmitting ? "Submitting Application..." : "Submit Application"}
         </button>
@@ -248,6 +266,13 @@ export default function App() {
                         <span style={{ fontSize: "12px", color: "#666", fontWeight: "600" }}>Updating...</span>
                       ) : (
                         <>
+                          <button 
+                            className="btn-download" 
+                            onClick={() => downloadFolder(startup.id)}
+                            style={{background: '#4CAF50', color: 'white', marginRight: '6px', padding: '6px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px'}}
+                          >
+                            Download Folder
+                          </button>
                           <button className="btn-approve" onClick={() => updateStatus(startup.id, "Approved")}>Approve</button>
                           <button className="btn-reject" onClick={() => updateStatus(startup.id, "Rejected")}>Reject</button>
                         </>
