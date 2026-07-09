@@ -55,15 +55,64 @@ def init_db():
     conn.execute('''
     CREATE TABLE IF NOT EXISTS startups (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        startup_name TEXT,
-        founder_name TEXT,
+
+        -- Applicant Details
+        name TEXT,
         email TEXT,
+        gender TEXT,
+        dob TEXT,
+        address TEXT,
+        contact_number TEXT,
+        native_state TEXT,
+        highest_qualification TEXT,
+        professional_experience TEXT,
+
+        -- Startup Details
+        startup_name TEXT,
+        company_type TEXT,
+        incorporation_date TEXT,
+        cin TEXT,
+        office_address TEXT,
+        gst_number TEXT,
+        dpiit_number TEXT,
         sector TEXT,
+        startup_stage TEXT,
+        problem_statement TEXT,
+        value_proposition TEXT,
+        usp TEXT,
+        target_customer TEXT,
+        competitors TEXT,
+        scale_up_plan TEXT,
+        revenue_model TEXT,
+        market_size TEXT,
+        website_url TEXT,
+        social_media_links TEXT,
+        video_url TEXT,
+        govt_support TEXT,
+        seed_support TEXT,
+
+        -- Team Details
+        founder_name TEXT,
+        co_founder_name TEXT,
+        team_emails TEXT,
+        team_contacts TEXT,
+        linkedin_profiles TEXT,
+        full_time_employees TEXT,
+
+        -- Incubator Requirement
+        why_applying TEXT,
+        expectations TEXT,
+        funds_required TEXT,
+        funding_requirement TEXT,
+
+        -- File uploads (existing)
         pitch_deck TEXT,
         resume TEXT,
         pan_card TEXT,
         certificate TEXT,
         business_plan TEXT,
+        other_document TEXT,
+
         status TEXT DEFAULT 'Pending'
     )
     ''')
@@ -99,11 +148,56 @@ def home():
 @app.route('/register', methods=['POST'])
 def register():
     try:
-        startup_name = request.form.get('startupName')
-        founder_name = request.form.get('founderName')
+        # Applicant Details
+        name = request.form.get('name')
         email = request.form.get('email')
-        sector = request.form.get('sector')
+        gender = request.form.get('gender')
+        dob = request.form.get('dob')
+        address = request.form.get('address')
+        contact_number = request.form.get('contactNumber')
+        native_state = request.form.get('nativeState')
+        highest_qualification = request.form.get('highestQualification')
+        professional_experience = request.form.get('professionalExperience')
 
+        # Startup Details
+        startup_name = request.form.get('startupName')
+        company_type = request.form.get('companyType')
+        incorporation_date = request.form.get('incorporationDate')
+        cin = request.form.get('cin')
+        office_address = request.form.get('officeAddress')
+        gst_number = request.form.get('gstNumber')
+        dpiit_number = request.form.get('dpiitNumber')
+        sector = request.form.get('sector')
+        startup_stage = request.form.get('startupStage')
+        problem_statement = request.form.get('problemStatement')
+        value_proposition = request.form.get('valueProposition')
+        usp = request.form.get('usp')
+        target_customer = request.form.get('targetCustomer')
+        competitors = request.form.get('competitors')
+        scale_up_plan = request.form.get('scaleUpPlan')
+        revenue_model = request.form.get('revenueModel')
+        market_size = request.form.get('marketSize')
+        website_url = request.form.get('websiteUrl')
+        social_media_links = request.form.get('socialMediaLinks')
+        video_url = request.form.get('videoUrl')
+        govt_support = request.form.get('govtSupport')
+        seed_support = request.form.get('seedSupport')
+
+        # Team Details
+        founder_name = request.form.get('founderName')
+        co_founder_name = request.form.get('coFounderName')
+        team_emails = request.form.get('teamEmails')
+        team_contacts = request.form.get('teamContacts')
+        linkedin_profiles = request.form.get('linkedinProfiles')
+        full_time_employees = request.form.get('fullTimeEmployees')
+
+        # Incubator Requirement
+        why_applying = request.form.get('whyApplying')
+        expectations = request.form.get('expectations')
+        funds_required = request.form.get('fundsRequired')
+        funding_requirement = request.form.get('fundingRequirement')
+
+        # Files
         required_files = ['pitchDeck', 'resume', 'panCard', 'certificate', 'businessPlan']
         for f in required_files:
             if f not in request.files:
@@ -114,55 +208,70 @@ def register():
         pan_card = request.files['panCard']
         certificate = request.files['certificate']
         business_plan = request.files['businessPlan']
+        other_document = request.files.get('otherDocument')
 
         pitch_deck_name = secure_filename(pitch_deck.filename)
         resume_name = secure_filename(resume.filename)
         pan_card_name = secure_filename(pan_card.filename)
         certificate_name = secure_filename(certificate.filename)
         business_plan_name = secure_filename(business_plan.filename)
+        other_document_name = secure_filename(other_document.filename) if other_document and other_document.filename else ""
 
         pitch_deck.save(os.path.join(app.config['UPLOAD_FOLDER'], pitch_deck_name))
         resume.save(os.path.join(app.config['UPLOAD_FOLDER'], resume_name))
         pan_card.save(os.path.join(app.config['UPLOAD_FOLDER'], pan_card_name))
         certificate.save(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name))
         business_plan.save(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name))
+        if other_document and other_document.filename:
+            other_document.save(os.path.join(app.config['UPLOAD_FOLDER'], other_document_name))
 
-        # ===== CREATE ORGANIZED FOLDER =====
+        # Organized folder
         timestamp = int(datetime.now().timestamp())
         app_folder = os.path.join(APPLICANT_DATA_FOLDER, f"{startup_name}_{timestamp}")
         if not os.path.exists(app_folder):
             os.makedirs(app_folder)
 
-        # Copy files to organized folder
-        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], pitch_deck_name), os.path.join(app_folder, pitch_deck_name))
-        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], resume_name), os.path.join(app_folder, resume_name))
-        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], pan_card_name), os.path.join(app_folder, pan_card_name))
-        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], certificate_name), os.path.join(app_folder, certificate_name))
-        shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], business_plan_name), os.path.join(app_folder, business_plan_name))
+        for fname in [pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name]:
+            shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], fname), os.path.join(app_folder, fname))
+        if other_document_name:
+            shutil.copy(os.path.join(app.config['UPLOAD_FOLDER'], other_document_name), os.path.join(app_folder, other_document_name))
 
-        # Create details text file
         details_file = os.path.join(app_folder, 'applicant_details.txt')
         with open(details_file, 'w') as f:
-            f.write(f"Startup Name: {startup_name}\n")
-            f.write(f"Founder Name: {founder_name}\n")
-            f.write(f"Email: {email}\n")
-            f.write(f"Sector: {sector}\n")
-            f.write(f"Submission Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Status: Pending\n")
+            f.write(f"Name: {name}\nEmail: {email}\nStartup Name: {startup_name}\n")
+            f.write(f"Submission Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nStatus: Pending\n")
 
-        # Save to SQLite Database
         conn = get_db_connection()
-        cursor = conn.execute(
-            '''INSERT INTO startups
-            (startup_name, founder_name, email, sector, pitch_deck, resume, pan_card, certificate, business_plan)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-            (startup_name, founder_name, email, sector, pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name)
-        )
+        cursor = conn.execute('''
+            INSERT INTO startups (
+                name, email, gender, dob, address, contact_number, native_state,
+                highest_qualification, professional_experience,
+                startup_name, company_type, incorporation_date, cin, office_address,
+                gst_number, dpiit_number, sector, startup_stage, problem_statement,
+                value_proposition, usp, target_customer, competitors, scale_up_plan,
+                revenue_model, market_size, website_url, social_media_links, video_url,
+                govt_support, seed_support,
+                founder_name, co_founder_name, team_emails, team_contacts,
+                linkedin_profiles, full_time_employees,
+                why_applying, expectations, funds_required, funding_requirement,
+                pitch_deck, resume, pan_card, certificate, business_plan, other_document
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ''', (
+            name, email, gender, dob, address, contact_number, native_state,
+            highest_qualification, professional_experience,
+            startup_name, company_type, incorporation_date, cin, office_address,
+            gst_number, dpiit_number, sector, startup_stage, problem_statement,
+            value_proposition, usp, target_customer, competitors, scale_up_plan,
+            revenue_model, market_size, website_url, social_media_links, video_url,
+            govt_support, seed_support,
+            founder_name, co_founder_name, team_emails, team_contacts,
+            linkedin_profiles, full_time_employees,
+            why_applying, expectations, funds_required, funding_requirement,
+            pitch_deck_name, resume_name, pan_card_name, certificate_name, business_plan_name, other_document_name
+        ))
         conn.commit()
-        app_id = cursor.lastrowid
-        conn.close() 
-
-        # 1. USER MAIL TEMPLATE
+        conn.close()
+# 1. USER MAIL TEMPLATE
         user_html = f"""
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #1a73e8;">AIC Pre-Incubation Application Submitted</h2>
@@ -194,7 +303,6 @@ def register():
         </div>
         """
         try_sending_email(ADMIN_EMAIL, f'ALERT: New Startup Registered - {startup_name}', admin_html)
-
         return jsonify({"message": "Application Submitted Successfully!"}), 200
 
     except Exception as e:
