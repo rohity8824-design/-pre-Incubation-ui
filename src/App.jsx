@@ -179,9 +179,16 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">
+        <div className="logo-pill">
+          <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
+          <span className="logo-divider"></span>
+          <img src="/manipal-logo.png" alt="Manipal University Jaipur" className="logo-manipal"/>
+        </div>
         <h1>Automated Pre-Incubation Management System</h1>
         <p>AIC Startup Portal — Application & Review Dashboard</p>
       </div>
+
+      <div className="stats"></div>
 
       <div className="stats">
         <div className="stat">
