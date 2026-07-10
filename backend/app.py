@@ -119,14 +119,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-try:
-    conn = sqlite3.connect('startups.db', timeout=30)
-    conn.execute("PRAGMA integrity_check")
-    conn.close()
-except:
-    if os.path.exists('startups.db'):
-        os.remove('startups.db')
-    init_db()
+init_db()
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
