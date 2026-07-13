@@ -7,6 +7,12 @@ export default function App() {
   // URL check karne ke liye state: ?view=form parameter detect karega
   const [isFormOnly, setIsFormOnly] = useState(false);
 
+  // --- NAYE AUTH STATES ---
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+
   const [formData, setFormData] = useState({
     // Applicant Details
     name: "",
@@ -69,33 +75,71 @@ export default function App() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [viewingStartup, setViewingStartup] = useState(null);
 
-  // URL parameters detect karne ke liye useEffect
+  // --- RE-AUTH & VIEW CHECK ON LOAD ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("view") === "form") {
       setIsFormOnly(true);
+      setCheckingAuth(false);
     } else {
       setIsFormOnly(false);
-      // Agar admin view hai, tabhi startups fetch karenge
-      fetchStartups();
+      // Check if already logged in via Session Cookie
+      fetch(`${BASE_URL}/check-auth`, { credentials: "include" })
+        .then((res) => res.json())
+        .then((data) => {
+          setIsLoggedIn(data.logged_in);
+          setCheckingAuth(false);
+          if (data.logged_in) {
+            fetchStartups();
+          }
+        })
+        .catch(() => setCheckingAuth(false));
     }
   }, []);
 
+  // --- FETCH STARTUPS WITH CREDENTIALS ---
   const fetchStartups = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/startups`);
-      const data = await response.json();
-      setStartups(data);
+      const response = await fetch(`${BASE_URL}/startups`, { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setStartups(data);
+      }
     } catch (error) {
       console.log(error);
     }
   };
 
+  // --- HANDLE LOGIN FUNCTION ---
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError("");
+    try {
+      const res = await fetch(`${BASE_URL}/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginForm),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setIsLoggedIn(true);
+        fetchStartups();
+      } else {
+        setLoginError(result.error || "Login failed");
+      }
+    } catch (err) {
+      setLoginError("Connection error");
+    }
+  };
+
+  // --- UPDATE STATUS WITH CREDENTIALS ---
   const updateStatus = async (id, status) => {
     setActionLoadingId(id);
     try {
       const response = await fetch(`${BASE_URL}/update-status/${id}`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: status }),
       });
@@ -112,9 +156,10 @@ export default function App() {
     }
   };
 
+  // --- DOWNLOAD FOLDER WITH CREDENTIALS ---
   const downloadFolder = async (id) => {
     try {
-      const response = await fetch(`${BASE_URL}/download-folder/${id}`);
+      const response = await fetch(`${BASE_URL}/download-folder/${id}`, { credentials: "include" });
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -151,6 +196,7 @@ export default function App() {
     setFiles({ pitchDeck: null, resume: null, panCard: null, certificate: null, businessPlan: null, otherDocument: null });
   };
 
+  // --- SUBMIT REGISTRATION WITH CREDENTIALS ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -168,6 +214,7 @@ export default function App() {
 
       const response = await fetch(`${BASE_URL}/register`, {
         method: "POST",
+        credentials: "include", // Session preservation if any
         body: data,
       });
 
@@ -176,7 +223,7 @@ export default function App() {
       if (response.ok) {
         alert(result.message);
         resetForm();
-        if (!isFormOnly) await fetchStartups();
+        if (!isFormOnly && isLoggedIn) await fetchStartups();
       } else {
         alert(result.error);
       }
@@ -188,7 +235,7 @@ export default function App() {
     }
   };
 
-  // Stats calculation sirf tabhi ho jab startups data available ho (Admin view)
+  // Stats calculation sirf tabhi ho jab startups data available ho (Admin view & Logged In)
   const sectorCounts = startups.reduce((acc, s) => {
     acc[s.sector] = (acc[s.sector] || 0) + 1;
     return acc;
@@ -215,8 +262,8 @@ export default function App() {
 
   return (
     <div className={`layout ${isFormOnly ? "form-only-layout" : ""}`}>
-      {/* 1. Sidebar: Sirf admin view mein dikhega */}
-      {!isFormOnly && (
+      {/* 1. Sidebar: Sirf tab dikhega jab admin layout ho aur logged in ho */}
+      {!isFormOnly && isLoggedIn && (
         <div className="sidebar">
           <div className="sidebar-brand">
             <img src="/aic-logo.png" alt="AIC MUJ" className="sidebar-logo"/>
@@ -238,7 +285,7 @@ export default function App() {
         </div>
       )}
 
-      <div className={`app ${isFormOnly ? "form-only" : ""}`}>
+      <div className={`app ${isFormOnly || !isLoggedIn ? "form-only" : ""}`}>
         <div className="header">
           <div className="logo-pill">
             <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
@@ -249,8 +296,8 @@ export default function App() {
           <p>{isFormOnly ? "Student / Employee Application Portal" : "AIC Startup Portal — Application & Review Dashboard"}</p>
         </div>
 
-        {/* 2. Stats & Analytics Grid: Sirf admin view mein dikhega */}
-        {!isFormOnly && (
+        {/* 2. Stats & Analytics Grid: Sirf tab jab admin logged in ho */}
+        {!isFormOnly && isLoggedIn && (
           <>
             <div className="stats">
               <div className="stat">
@@ -315,7 +362,7 @@ export default function App() {
           </>
         )}
 
-        {/* 3. Application Form: Dono views mein dikhega */}
+        {/* 3. Application Form: Sabhi ko dikhega registration ke liye */}
         <div className="card">
           <div className="card-title">Pre-Incubation Application</div>
 
@@ -591,156 +638,192 @@ export default function App() {
           </button>
         </div>
 
-        {/* 4. Admin Dashboard Table: Sirf admin view mein dikhega */}
+        {/* 4. Admin Dashboard Table: Locked behind Auth Logic */}
         {!isFormOnly && (
           <div className="card">
             <div className="card-title">Admin Dashboard</div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th><th>Startup</th><th>Founder</th><th>Email</th><th>Sector</th>
-                    <th>Pitch</th><th>Resume</th><th>PAN</th><th>Certificate</th><th>Business Plan</th>
-                    <th>Status</th><th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {startups.length === 0 ? (
-                    <tr><td colSpan="12" style={{textAlign:"center",padding:"2rem",color:"#888"}}>
-                      No applications found
-                    </td></tr>
-                  ) : (
-                    startups.map((startup) => (
-                      <tr key={startup.id}>
-                        <td>{startup.id}</td>
-                        <td><strong>{startup.startup_name}</strong></td>
-                        <td>{startup.founder_name}</td>
-                        <td>{startup.email}</td>
-                        <td>{startup.sector}</td>
-                        <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pitch_deck}`} target="_blank" rel="noreferrer">Download</a></td>
-                        <td><a className="dl-link" href={`${BASE_URL}/download/${startup.resume}`} target="_blank" rel="noreferrer">Download</a></td>
-                        <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pan_card}`} target="_blank" rel="noreferrer">Download</a></td>
-                        <td><a className="dl-link" href={`${BASE_URL}/download/${startup.certificate}`} target="_blank" rel="noreferrer">Download</a></td>
-                        <td><a className="dl-link" href={`${BASE_URL}/download/${startup.business_plan}`} target="_blank" rel="noreferrer">Download</a></td>
-                        <td>
-                          <span className={`badge ${
-                            startup.status === "Approved" ? "badge-approved" :
-                            startup.status === "Rejected" ? "badge-rejected" : "badge-pending"
-                          }`}>
-                            {startup.status}
-                          </span>
-                        </td>
-                        <td>
-                          {actionLoadingId === startup.id ? (
-                            <span style={{ fontSize: "12px", color: "#666", fontWeight: "600" }}>Updating...</span>
-                          ) : (
-                            <>
-                              <button
-                                className="btn-view"
-                                onClick={() => setViewingStartup(startup)}
-                                style={{background:'#6C5CE7',color:'white',marginRight:'6px',padding:'6px 10px',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'12px'}}
-                              >
-                                View Form
-                              </button>
-                              <button
-                                className="btn-download"
-                                onClick={() => downloadFolder(startup.id)}
-                                style={{background: '#4CAF50', color: 'white', marginRight: '6px', padding: '6px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px'}}
-                              >
-                                Download Folder
-                              </button>
-                              <button className="btn-approve" onClick={() => updateStatus(startup.id, "Approved")}>Approve</button>
-                              <button className="btn-reject" onClick={() => updateStatus(startup.id, "Rejected")}>Reject</button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+
+            {checkingAuth ? (
+              <p style={{ padding: "1rem", color: "#6B6B85" }}>Checking access...</p>
+            ) : !isLoggedIn ? (
+              // --- LOGIN FORM UI ---
+              <form onSubmit={handleLogin} style={{maxWidth: "320px", display: "flex", flexDirection: "column", gap: "12px", padding: "1rem"}}>
+                <div className="form-field">
+                  <label>Username</label>
+                  <input
+                    type="text"
+                    placeholder="Enter admin username"
+                    value={loginForm.username}
+                    onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                  />
+                </div>
+                <div className="form-field">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    placeholder="Enter password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                  />
+                </div>
+                {loginError && <p style={{color: "red", fontSize: "13px", margin: "4px 0"}}>{loginError}</p>}
+                <button type="submit" className="submit-btn" style={{ marginTop: "8px" }}>Login as Admin</button>
+              </form>
+            ) : (
+              // --- AUTHORIZED DATA VIEW ---
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th><th>Startup</th><th>Founder</th><th>Email</th><th>Sector</th>
+                      <th>Pitch</th><th>Resume</th><th>PAN</th><th>Certificate</th><th>Business Plan</th>
+                      <th>Status</th><th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {startups.length === 0 ? (
+                      <tr><td colSpan="12" style={{textAlign:"center",padding:"2rem",color:"#888"}}>
+                        No applications found
+                      </td></tr>
+                    ) : (
+                      startups.map((startup) => (
+                        <tr key={startup.id}>
+                          <td>{startup.id}</td>
+                          <td><strong>{startup.startup_name}</strong></td>
+                          <td>{startup.founder_name}</td>
+                          <td>{startup.email}</td>
+                          <td>{startup.sector}</td>
+                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pitch_deck}`} target="_blank" rel="noreferrer">Download</a></td>
+                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.resume}`} target="_blank" rel="noreferrer">Download</a></td>
+                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pan_card}`} target="_blank" rel="noreferrer">Download</a></td>
+                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.certificate}`} target="_blank" rel="noreferrer">Download</a></td>
+                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.business_plan}`} target="_blank" rel="noreferrer">Download</a></td>
+                          <td>
+                            <span className={`badge ${
+                              startup.status === "Approved" ? "badge-approved" :
+                              startup.status === "Rejected" ? "badge-rejected" : "badge-pending"
+                            }`}>
+                              {startup.status}
+                            </span>
+                          </td>
+                          <td>
+                            {actionLoadingId === startup.id ? (
+                              <span style={{ fontSize: "12px", color: "#666", fontWeight: "600" }}>Updating...</span>
+                            ) : (
+                              <>
+                                <button
+                                  className="btn-view"
+                                  onClick={() => setViewingStartup(startup)}
+                                  style={{background:'#6C5CE7',color:'white',marginRight:'6px',padding:'6px 10px',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'12px'}}
+                                >
+                                  View Form
+                                </button>
+                                <button
+                                  className="btn-download"
+                                  onClick={() => downloadFolder(startup.id)}
+                                  style={{background: '#4CAF50', color: 'white', marginRight: '6px', padding: '6px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px'}}
+                                >
+                                  Download Folder
+                                </button>
+                                <button className="btn-approve" onClick={() => updateStatus(startup.id, "Approved")}>Approve</button>
+                                <button className="btn-reject" onClick={() => updateStatus(startup.id, "Rejected")}>Reject</button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Modal View for Admin (Injected properties fix applied) */}
+      {/* Modal View for Admin (Injected properties fix applied & fully closed) */}
       {viewingStartup && (
         <div className="modal-overlay" onClick={() => setViewingStartup(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header no-print">
-              <h2>{viewingStartup.startup_name} — Application</h2>
+              <h2>{viewingStartup.startup_name} — Application Details</h2>
               <div>
                 <button className="btn-print" onClick={() => window.print()}>🖨 Print / Save PDF</button>
                 <button className="btn-close" onClick={() => setViewingStartup(null)}>✕</button>
               </div>
             </div>
 
-            <div className="view-section">
-              <h3>1. Applicant's Details</h3>
-              <div className="view-grid">
-                <div><label>Name</label><p>{viewingStartup.name || "—"}</p></div>
-                <div><label>Email</label><p>{viewingStartup.email || "—"}</p></div>
-                <div><label>Gender</label><p>{viewingStartup.gender || "—"}</p></div>
-                <div><label>Date of Birth</label><p>{viewingStartup.dob || "—"}</p></div>
-                <div className="full"><label>Address</label><p>{viewingStartup.address || "—"}</p></div>
-                <div><label>Contact Number</label><p>{viewingStartup.contact_number || "—"}</p></div>
-                <div><label>Native State</label><p>{viewingStartup.native_state || "—"}</p></div>
-                <div><label>Highest Qualification</label><p>{viewingStartup.highest_qualification || "—"}</p></div>
-                <div className="full"><label>Professional Experience</label><p>{viewingStartup.professional_experience || "—"}</p></div>
+            <div className="modal-body">
+              {/* Section 1: Applicant Info */}
+              <div className="view-section">
+                <h3>1. Applicant's Details</h3>
+                <div className="details-grid">
+                  <div><strong>Name:</strong> {viewingStartup.name}</div>
+                  <div><strong>Email:</strong> {viewingStartup.email}</div>
+                  <div><strong>Gender:</strong> {viewingStartup.gender}</div>
+                  <div><strong>DOB:</strong> {viewingStartup.dob}</div>
+                  <div><strong>Contact:</strong> {viewingStartup.contactNumber || viewingStartup.contact_number}</div>
+                  <div><strong>Native State:</strong> {viewingStartup.nativeState || viewingStartup.native_state}</div>
+                  <div><strong>Qualification:</strong> {viewingStartup.highestQualification || viewingStartup.highest_qualification}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Address:</strong> {viewingStartup.address}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Experience:</strong> {viewingStartup.professionalExperience || viewingStartup.professional_experience}</div>
+                </div>
+              </div>
+
+              {/* Section 2: Startup details */}
+              <div className="view-section">
+                <h3>2. Startup Details</h3>
+                <div className="details-grid">
+                  <div><strong>Startup Name:</strong> {viewingStartup.startup_name}</div>
+                  <div><strong>Company Type:</strong> {viewingStartup.company_type}</div>
+                  <div><strong>Incorporation Date:</strong> {viewingStartup.incorporation_date}</div>
+                  <div><strong>CIN:</strong> {viewingStartup.cin}</div>
+                  <div><strong>GST Number:</strong> {viewingStartup.gst_number}</div>
+                  <div><strong>DPIIT No:</strong> {viewingStartup.dpiit_number}</div>
+                  <div><strong>Sector:</strong> {viewingStartup.sector}</div>
+                  <div><strong>Stage:</strong> {viewingStartup.startup_stage}</div>
+                  <div><strong>Website:</strong> {viewingStartup.website_url}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Office Address:</strong> {viewingStartup.office_address}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Problem Statement:</strong> {viewingStartup.problem_statement}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Value Proposition:</strong> {viewingStartup.value_proposition}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>USP:</strong> {viewingStartup.usp}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Target Customers:</strong> {viewingStartup.target_customer}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Competitors:</strong> {viewingStartup.competitors}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Scale Up Plan:</strong> {viewingStartup.scale_up_plan}</div>
+                  <div><strong>Revenue Model:</strong> {viewingStartup.revenue_model}</div>
+                  <div><strong>Market Size:</strong> {viewingStartup.market_size}</div>
+                  <div><strong>Video URL:</strong> {viewingStartup.video_url}</div>
+                  <div><strong>Govt Support:</strong> {viewingStartup.govt_support}</div>
+                  <div><strong>Seed Support:</strong> {viewingStartup.seed_support}</div>
+                </div>
+              </div>
+
+              {/* Section 3: Team info */}
+              <div className="view-section">
+                <h3>3. Startup Team Details</h3>
+                <div className="details-grid">
+                  <div><strong>Founder:</strong> {viewingStartup.founder_name}</div>
+                  <div><strong>Co-Founder:</strong> {viewingStartup.co_founder_name}</div>
+                  <div><strong>Team Emails:</strong> {viewingStartup.team_emails}</div>
+                  <div><strong>Team Contacts:</strong> {viewingStartup.team_contacts}</div>
+                  <div><strong>LinkedIn Profiles:</strong> {viewingStartup.linkedin_profiles}</div>
+                  <div><strong>Full Time Employees:</strong> {viewingStartup.full_time_employees}</div>
+                </div>
+              </div>
+
+              {/* Section 4: Requirement */}
+              <div className="view-section">
+                <h3>4. Incubator Expectations & Requirements</h3>
+                <div className="details-grid">
+                  <div style={{gridColumn: "span 2"}}><strong>Why Applying:</strong> {viewingStartup.why_applying}</div>
+                  <div style={{gridColumn: "span 2"}}><strong>Expectations:</strong> {viewingStartup.expectations}</div>
+                  <div><strong>Funds Required:</strong> {viewingStartup.funds_required}</div>
+                  <div><strong>Funding Requirement:</strong> {viewingStartup.funding_requirement}</div>
+                </div>
               </div>
             </div>
-
-            <div className="view-section">
-              <h3>2. Startup Details</h3>
-              <div className="view-grid">
-                <div><label>Startup/Brand Name</label><p>{viewingStartup.startup_name || "—"}</p></div>
-                <div><label>Type of Company</label><p>{viewingStartup.company_type || "—"}</p></div>
-                <div><label>Date of Incorporation</label><p>{viewingStartup.incorporation_date || "—"}</p></div>
-                <div><label>CIN</label><p>{viewingStartup.cin || "—"}</p></div>
-                <div className="full"><label>Office Address</label><p>{viewingStartup.office_address || "—"}</p></div>
-                <div><label>GST Number</label><p>{viewingStartup.gst_number || "—"}</p></div>
-                <div><label>DPIIT Number</label><p>{viewingStartup.dpiit_number || "—"}</p></div>
-                <div><label>Sector</label><p>{viewingStartup.sector || "—"}</p></div>
-                <div><label>Stage</label><p>{viewingStartup.startup_stage || "—"}</p></div>
-                <div className="full"><label>Problem Statement</label><p>{viewingStartup.problem_statement || "—"}</p></div>
-                <div className="full"><label>Value Proposition</label><p>{viewingStartup.value_proposition || "—"}</p></div>
-                <div className="full"><label>USP</label><p>{viewingStartup.usp || "—"}</p></div>
-                <div className="full"><label>Target Customer</label><p>{viewingStartup.target_customer || "—"}</p></div>
-                <div className="full"><label>Competitors</label><p>{viewingStartup.competitors || "—"}</p></div>
-                <div className="full"><label>Scale Up Plan</label><p>{viewingStartup.scale_up_plan || "—"}</p></div>
-                <div className="full"><label>Revenue Model</label><p>{viewingStartup.revenue_model || "—"}</p></div>
-                <div><label>Market Size</label><p>{viewingStartup.market_size || "—"}</p></div>
-                <div><label>Website URL</label><p>{viewingStartup.website_url || "—"}</p></div>
-                <div><label>Social Media Links</label><p>{viewingStartup.social_media_links || "—"}</p></div>
-                <div><label>Video URL</label><p>{viewingStartup.video_url || "—"}</p></div>
-                <div><label>Govt Support</label><p>{viewingStartup.govt_support || "—"}</p></div>
-                <div><label>Seed Support</label><p>{viewingStartup.seed_support || "—"}</p></div>
-              </div>
-            </div>
-
-            <div className="view-section">
-              <h3>3. Team Details</h3>
-              <div className="view-grid">
-                <div><label>Founder Name</label><p>{viewingStartup.founder_name || "—"}</p></div>
-                <div><label>Co-Founder Name</label><p>{viewingStartup.co_founder_name || "—"}</p></div>
-                <div><label>Team Emails</label><p>{viewingStartup.team_emails || "—"}</p></div>
-                <div><label>Team Contacts</label><p>{viewingStartup.team_contacts || "—"}</p></div>
-                <div className="full"><label>LinkedIn Profiles</label><p>{viewingStartup.linkedin_profiles || "—"}</p></div>
-                <div><label>Full Time Employees</label><p>{viewingStartup.full_time_employees || "—"}</p></div>
-              </div>
-            </div>
-
-            <div className="view-section">
-              <h3>4. Incubator Requirements</h3>
-              <div className="view-grid">
-                <div className="full"><label>Why Applying</label><p>{viewingStartup.why_applying || "—"}</p></div>
-                <div className="full"><label>Expectations</label><p>{viewingStartup.expectations || "—"}</p></div>
-                <div><label>Funds Required</label><p>{viewingStartup.funds_required || "—"}</p></div>
-                <div><label>Funding Requirement</label><p>{viewingStartup.funding_requirement || "—"}</p></div>
-              </div>
-            </div>
-
           </div>
         </div>
       )}

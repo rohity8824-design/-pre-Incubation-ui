@@ -3,15 +3,27 @@ import sqlite3
 import smtplib
 import shutil
 import zipfile
+from functools import wraps
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-CORS(app, origins="*")
+
+# ======================================
+# SESSION & CORS CONFIGURATION (UPDATED)
+# ======================================
+app.secret_key = os.environ.get('SECRET_KEY', 'change-this-to-a-random-secret-string-later')
+
+# Cookies aur Session support ke liye explicit origins set kiya hai
+CORS(app, supports_credentials=True, origins=["https://pre-incubation-ui.vercel.app", "http://localhost:5173"])
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 
 # ======================================
 # EMAIL CONFIGURATION
@@ -21,6 +33,12 @@ SMTP_PORT = 587
 SENDER_EMAIL = 'rohity8824@gmail.com'
 SENDER_PASSWORD = 'raucdepbzisshhpx'
 ADMIN_EMAIL = 'rohity8824@gmail.com'
+
+# ======================================
+# ADMIN CREDENTIALS (NEW)
+# ======================================
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'changeme123'))
 
 def try_sending_email(recipient, subject, html_content):
     try:
@@ -39,6 +57,17 @@ def try_sending_email(recipient, subject, html_content):
         print(f"--> [SMTP SUCCESS] Sent to {recipient}")
     except Exception as e:
         print(f"--> [SMTP LOG] Mail to {recipient} skipped: {str(e)}")
+
+# ======================================
+# AUTH DECORATOR (NEW)
+# ======================================
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('logged_in'):
+            return jsonify({"error": "Unauthorized. Please login."}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 # ======================================
 # DATABASE HELPER FUNCTION
@@ -131,13 +160,35 @@ if not os.path.exists(APPLICANT_DATA_FOLDER):
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# ======================================
+# ROUTES
+# ======================================
 @app.route('/')
 def home():
     return "Backend Live - Multi-Template Active"
 
-# ======================================
-# REGISTER ROUTE
-# ======================================
+# --- AUTH ROUTES (NEW) ---
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
+        session['logged_in'] = True
+        session.permanent = True
+        return jsonify({"message": "Login successful"}), 200
+    return jsonify({"error": "Invalid username or password"}), 401
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"message": "Logged out"}), 200
+
+@app.route('/check-auth', methods=['GET'])
+def check_auth():
+    return jsonify({"logged_in": bool(session.get('logged_in'))}), 200
+
+# --- PUBLIC ROUTE ---
 @app.route('/register', methods=['POST'])
 def register():
     try:
@@ -264,7 +315,8 @@ def register():
         ))
         conn.commit()
         conn.close()
-# 1. USER MAIL TEMPLATE
+
+        # 1. USER MAIL TEMPLATE
         user_html = f"""
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #1a73e8;">AIC Pre-Incubation Application Submitted</h2>
@@ -302,7 +354,9 @@ def register():
         print("CRITICAL ERROR:", str(e))
         return jsonify({"error": f"Server Error: {str(e)}"}), 500
 
+# --- PROTECTED ROUTES (WITH @login_required) ---
 @app.route('/startups', methods=['GET'])
+@login_required
 def get_startups():
     conn = get_db_connection()
     rows = conn.execute("SELECT * FROM startups").fetchall()
@@ -310,10 +364,12 @@ def get_startups():
     return jsonify([dict(row) for row in rows])
 
 @app.route('/download/<filename>', methods=['GET'])
+@login_required
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=False)
 
 @app.route('/download-folder/<int:id>', methods=['GET'])
+@login_required
 def download_folder(id):
     conn = get_db_connection()
     startup = conn.execute("SELECT * FROM startups WHERE id = ?", (id,)).fetchone()
@@ -337,6 +393,7 @@ def download_folder(id):
     return send_from_directory(app.config['UPLOAD_FOLDER'], zip_filename, as_attachment=True)
 
 @app.route('/update-status/<int:id>', methods=['POST'])
+@login_required
 def update_status(id):
     data = request.json
     if not data or 'status' not in data:
