@@ -238,7 +238,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="app">
+      <div className={`app ${isFormOnly ? "form-only" : ""}`}>
         <div className="header">
           <div className="logo-pill">
             <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
