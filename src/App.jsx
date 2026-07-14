@@ -112,8 +112,10 @@ export default function App() {
 
   // --- HANDLE LOGIN FUNCTION ---
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError("");
+  e.preventDefault();
+  setLoginError("Connecting to server...");
+  
+  const tryLogin = async (attempt = 1) => {
     try {
       const res = await fetch(`${BASE_URL}/login`, {
         method: "POST",
@@ -124,14 +126,23 @@ export default function App() {
       const result = await res.json();
       if (res.ok) {
         setIsLoggedIn(true);
+        setLoginError("");
         fetchStartups();
       } else {
         setLoginError(result.error || "Login failed");
       }
     } catch (err) {
-      setLoginError("Connection error");
+      if (attempt < 3) {
+        setLoginError(`Server is waking up, retrying... (${attempt}/3)`);
+        setTimeout(() => tryLogin(attempt + 1), 4000);
+      } else {
+        setLoginError("Connection error. Please try again in a moment.");
+      }
     }
   };
+
+  tryLogin();
+};
 
   // --- UPDATE STATUS WITH CREDENTIALS ---
   const updateStatus = async (id, status) => {
