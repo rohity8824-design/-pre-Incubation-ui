@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 const BASE_URL = "https://pre-incubation-backend.onrender.com";
 
 export default function App() {
-  // URL check karne ke liye state: ?view=form parameter detect karega
+  // State to check URL parameter: detects ?view=form
   const [isFormOnly, setIsFormOnly] = useState(false);
 
-  // --- NAYE AUTH STATES ---
+  // --- AUTH STATES ---
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
@@ -74,6 +74,8 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [viewingStartup, setViewingStartup] = useState(null);
+  const [pitchingStartup, setPitchingStartup] = useState(null);
+  const [pitchForm, setPitchForm] = useState({ pitch_date: "", pitch_time: "", pitch_link: "" });
 
   // --- RE-AUTH & VIEW CHECK ON LOAD ---
   useEffect(() => {
@@ -112,37 +114,37 @@ export default function App() {
 
   // --- HANDLE LOGIN FUNCTION ---
   const handleLogin = async (e) => {
-  e.preventDefault();
-  setLoginError("Connecting to server...");
-  
-  const tryLogin = async (attempt = 1) => {
-    try {
-      const res = await fetch(`${BASE_URL}/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginForm),
-      });
-      const result = await res.json();
-      if (res.ok) {
-        setIsLoggedIn(true);
-        setLoginError("");
-        fetchStartups();
-      } else {
-        setLoginError(result.error || "Login failed");
+    e.preventDefault();
+    setLoginError("Connecting to server...");
+    
+    const tryLogin = async (attempt = 1) => {
+      try {
+        const res = await fetch(`${BASE_URL}/login`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(loginForm),
+        });
+        const result = await res.json();
+        if (res.ok) {
+          setIsLoggedIn(true);
+          setLoginError("");
+          fetchStartups();
+        } else {
+          setLoginError(result.error || "Login failed");
+        }
+      } catch (err) {
+        if (attempt < 3) {
+          setLoginError(`Server is waking up, retrying... (${attempt}/3)`);
+          setTimeout(() => tryLogin(attempt + 1), 4000);
+        } else {
+          setLoginError("Connection error. Please try again in a moment.");
+        }
       }
-    } catch (err) {
-      if (attempt < 3) {
-        setLoginError(`Server is waking up, retrying... (${attempt}/3)`);
-        setTimeout(() => tryLogin(attempt + 1), 4000);
-      } else {
-        setLoginError("Connection error. Please try again in a moment.");
-      }
-    }
-  };
+    };
 
-  tryLogin();
-};
+    tryLogin();
+  };
 
   // --- UPDATE STATUS WITH CREDENTIALS ---
   const updateStatus = async (id, status) => {
@@ -162,6 +164,53 @@ export default function App() {
     } catch (error) {
       console.log(error);
       alert("Status Update Failed");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const openPitchModal = (startup) => {
+    setPitchingStartup(startup);
+    setPitchForm({
+      pitch_date: startup.pitch_date || "",
+      pitch_time: startup.pitch_time || "",
+      pitch_link: startup.pitch_link || "",
+    });
+  };
+
+  const savePitchDetails = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/update-pitching/${pitchingStartup.id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pitchForm),
+      });
+      if (response.ok) {
+        setPitchingStartup(null);
+        await fetchStartups();
+      } else {
+        alert("Failed to save pitching details");
+      }
+    } catch (error) {
+      alert("Connection error");
+    }
+  };
+
+  const toggleCertificate = async (id) => {
+    setActionLoadingId(id);
+    try {
+      const response = await fetch(`${BASE_URL}/update-certificate/${id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (response.ok) {
+        await fetchStartups();
+      } else {
+        alert("Failed to update certificate status");
+      }
+    } catch (error) {
+      alert("Connection error");
     } finally {
       setActionLoadingId(null);
     }
@@ -225,7 +274,7 @@ export default function App() {
 
       const response = await fetch(`${BASE_URL}/register`, {
         method: "POST",
-        credentials: "include", // Session preservation if any
+        credentials: "include",
         body: data,
       });
 
@@ -246,7 +295,7 @@ export default function App() {
     }
   };
 
-  // Stats calculation sirf tabhi ho jab startups data available ho (Admin view & Logged In)
+  // Calculate stats only when startup data is available (Admin view & Logged In)
   const sectorCounts = startups.reduce((acc, s) => {
     acc[s.sector] = (acc[s.sector] || 0) + 1;
     return acc;
@@ -273,7 +322,7 @@ export default function App() {
 
   return (
     <div className={`layout ${isFormOnly ? "form-only-layout" : ""}`}>
-      {/* 1. Sidebar: Sirf tab dikhega jab admin layout ho aur logged in ho */}
+      {/* 1. Sidebar: Visible only in admin layout when logged in */}
       {!isFormOnly && isLoggedIn && (
         <div className="sidebar">
           <div className="sidebar-brand">
@@ -307,7 +356,7 @@ export default function App() {
           <p>{isFormOnly ? "Student / Employee Application Portal" : "AIC Startup Portal — Application & Review Dashboard"}</p>
         </div>
 
-        {/* 2. Stats & Analytics Grid: Sirf tab jab admin logged in ho */}
+        {/* 2. Stats & Analytics Grid: Visible only when admin is logged in */}
         {!isFormOnly && isLoggedIn && (
           <>
             <div className="stats">
@@ -373,7 +422,7 @@ export default function App() {
           </>
         )}
 
-        {/* 3. Application Form: Sabhi ko dikhega registration ke liye */}
+        {/* 3. Application Form: Visible to everyone for registration */}
         <div className="card">
           <div className="card-title">Pre-Incubation Application</div>
 
@@ -679,69 +728,88 @@ export default function App() {
                     style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
                   />
                 </div>
-                {loginError && <p style={{color: "red", fontSize: "13px", margin: "4px 0"}}>{loginError}</p>}
-                <button type="submit" className="submit-btn" style={{ marginTop: "8px" }}>Login as Admin</button>
+                {loginError && <p style={{ color: loginError.includes("waking up") ? "#F57F17" : "#C62828", fontSize: "12px", margin: 0 }}>{loginError}</p>}
+                <button type="submit" className="submit-btn" style={{ marginTop: "8px" }}>Log In</button>
               </form>
             ) : (
-              // --- AUTHORIZED DATA VIEW ---
-              <div className="table-wrap">
-                <table>
+              // --- PROTECTED ADMIN DATA DASHBOARD TABLE ---
+              <div style={{ overflowX: "auto", width: "100%" }}>
+                <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", marginTop: "1rem" }}>
                   <thead>
-                    <tr>
-                      <th>ID</th><th>Startup</th><th>Founder</th><th>Email</th><th>Sector</th>
-                      <th>Pitch</th><th>Resume</th><th>PAN</th><th>Certificate</th><th>Business Plan</th>
-                      <th>Status</th><th>Action</th>
+                    <tr style={{ background: "#F1F1F8", borderBottom: "1px solid #DCDCE7" }}>
+                      <th style={{ padding: "12px" }}>Startup Name</th>
+                      <th style={{ padding: "12px" }}>Founder</th>
+                      <th style={{ padding: "12px" }}>Sector</th>
+                      <th style={{ padding: "12px" }}>Status</th>
+                      <th style={{ padding: "12px" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {startups.length === 0 ? (
-                      <tr><td colSpan="12" style={{textAlign:"center",padding:"2rem",color:"#888"}}>
-                        No applications found
-                      </td></tr>
+                      <tr>
+                        <td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No application entries found.</td>
+                      </tr>
                     ) : (
                       startups.map((startup) => (
-                        <tr key={startup.id}>
-                          <td>{startup.id}</td>
-                          <td><strong>{startup.startup_name}</strong></td>
-                          <td>{startup.founder_name}</td>
-                          <td>{startup.email}</td>
-                          <td>{startup.sector}</td>
-                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pitch_deck}`} target="_blank" rel="noreferrer">Download</a></td>
-                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.resume}`} target="_blank" rel="noreferrer">Download</a></td>
-                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.pan_card}`} target="_blank" rel="noreferrer">Download</a></td>
-                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.certificate}`} target="_blank" rel="noreferrer">Download</a></td>
-                          <td><a className="dl-link" href={`${BASE_URL}/download/${startup.business_plan}`} target="_blank" rel="noreferrer">Download</a></td>
-                          <td>
-                            <span className={`badge ${
-                              startup.status === "Approved" ? "badge-approved" :
-                              startup.status === "Rejected" ? "badge-rejected" : "badge-pending"
-                            }`}>
+                        <tr key={startup.id} style={{ borderBottom: "1px solid #EAEAEA" }}>
+                          <td style={{ padding: "12px", fontWeight: "600" }}>{startup.startupName || "N/A"}</td>
+                          <td style={{ padding: "12px" }}>{startup.founderName || "N/A"}</td>
+                          <td style={{ padding: "12px" }}>{startup.sector || "N/A"}</td>
+                          <td style={{ padding: "12px" }}>
+                            <span style={{
+                              padding: "4px 8px", 
+                              borderRadius: "4px", 
+                              fontSize: "12px", 
+                              fontWeight: "bold",
+                              background: startup.status === "Approved" ? "#E8F5E9" : startup.status === "Rejected" ? "#FFEBEE" : "#FFF3E0",
+                              color: startup.status === "Approved" ? "#2E7D32" : startup.status === "Rejected" ? "#C62828" : "#F57F17"
+                            }}>
                               {startup.status}
                             </span>
                           </td>
-                          <td>
-                            {actionLoadingId === startup.id ? (
-                              <span style={{ fontSize: "12px", color: "#666", fontWeight: "600" }}>Updating...</span>
-                            ) : (
-                              <>
-                                <button
-                                  className="btn-view"
-                                  onClick={() => setViewingStartup(startup)}
-                                  style={{background:'#6C5CE7',color:'white',marginRight:'6px',padding:'6px 10px',border:'none',borderRadius:'4px',cursor:'pointer',fontSize:'12px'}}
-                                >
-                                  View Form
-                                </button>
-                                <button
-                                  className="btn-download"
-                                  onClick={() => downloadFolder(startup.id)}
-                                  style={{background: '#4CAF50', color: 'white', marginRight: '6px', padding: '6px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px'}}
-                                >
-                                  Download Folder
-                                </button>
-                                <button className="btn-approve" onClick={() => updateStatus(startup.id, "Approved")}>Approve</button>
-                                <button className="btn-reject" onClick={() => updateStatus(startup.id, "Rejected")}>Reject</button>
-                              </>
-                            )}
+                          <td style={{ padding: "12px" }}>
+                            <div className="action-btn-group">
+                              {/* --- MODIFIED VIEW BUTTON --- */}
+                              <button 
+                                className="glow-btn glow-view" 
+                                onClick={() => setViewingStartup(startup)}
+                              >
+                                View Form
+                              </button>
+                              
+                              {/* --- MODIFIED DOWNLOAD BUTTON --- */}
+                              <button 
+                                className="glow-btn glow-download" 
+                                onClick={() => downloadFolder(startup.id)}
+                              >
+                                Download Folder
+                              </button>
+                              
+                              <button 
+                                className="glow-btn glow-pitch" 
+                                onClick={() => openPitchModal(startup)}
+                              >
+                                Pitching Round
+                              </button>  
+                              <button 
+                                className="glow-btn glow-approve" 
+                                onClick={() => updateStatus(startup.id, "Approved")}
+                              >
+                                Approve
+                              </button>  
+                              <button 
+                                className="glow-btn glow-reject" 
+                                onClick={() => updateStatus(startup.id, "Rejected")}
+                              >
+                                Reject
+                              </button>  
+                              <button 
+                                className="glow-btn glow-certificate" 
+                                onClick={() => toggleCertificate(startup.id)}
+                              >    
+                                {startup.certificate_status === "Issued" ? "Certificate ✓" : "Certificate"}  
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -752,92 +820,68 @@ export default function App() {
             )}
           </div>
         )}
-      </div>
 
-      {/* Modal View for Admin (Injected properties fix applied & fully closed) */}
-      {viewingStartup && (
-        <div className="modal-overlay" onClick={() => setViewingStartup(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header no-print">
-              <h2>{viewingStartup.startup_name} — Application Details</h2>
-              <div>
-                <button className="btn-print" onClick={() => window.print()}>🖨 Print / Save PDF</button>
-                <button className="btn-close" onClick={() => setViewingStartup(null)}>✕</button>
+        {/* 5. Existing Modal for Viewing Complete Startup Form */}
+        {viewingStartup && (
+          <div className="modal-overlay" onClick={() => setViewingStartup(null)}>
+            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{viewingStartup.startupName || "Startup Details"}</h2>
+                <button className="close-btn" onClick={() => setViewingStartup(null)}>×</button>
               </div>
-            </div>
-
-            <div className="modal-body">
-              {/* Section 1: Applicant Info */}
-              <div className="view-section">
-                <h3>1. Applicant's Details</h3>
-                <div className="details-grid">
-                  <div><strong>Name:</strong> {viewingStartup.name}</div>
-                  <div><strong>Email:</strong> {viewingStartup.email}</div>
-                  <div><strong>Gender:</strong> {viewingStartup.gender}</div>
-                  <div><strong>DOB:</strong> {viewingStartup.dob}</div>
-                  <div><strong>Contact:</strong> {viewingStartup.contactNumber || viewingStartup.contact_number}</div>
-                  <div><strong>Native State:</strong> {viewingStartup.nativeState || viewingStartup.native_state}</div>
-                  <div><strong>Qualification:</strong> {viewingStartup.highestQualification || viewingStartup.highest_qualification}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Address:</strong> {viewingStartup.address}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Experience:</strong> {viewingStartup.professionalExperience || viewingStartup.professional_experience}</div>
-                </div>
-              </div>
-
-              {/* Section 2: Startup details */}
-              <div className="view-section">
-                <h3>2. Startup Details</h3>
-                <div className="details-grid">
-                  <div><strong>Startup Name:</strong> {viewingStartup.startup_name}</div>
-                  <div><strong>Company Type:</strong> {viewingStartup.company_type}</div>
-                  <div><strong>Incorporation Date:</strong> {viewingStartup.incorporation_date}</div>
-                  <div><strong>CIN:</strong> {viewingStartup.cin}</div>
-                  <div><strong>GST Number:</strong> {viewingStartup.gst_number}</div>
-                  <div><strong>DPIIT No:</strong> {viewingStartup.dpiit_number}</div>
-                  <div><strong>Sector:</strong> {viewingStartup.sector}</div>
-                  <div><strong>Stage:</strong> {viewingStartup.startup_stage}</div>
-                  <div><strong>Website:</strong> {viewingStartup.website_url}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Office Address:</strong> {viewingStartup.office_address}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Problem Statement:</strong> {viewingStartup.problem_statement}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Value Proposition:</strong> {viewingStartup.value_proposition}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>USP:</strong> {viewingStartup.usp}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Target Customers:</strong> {viewingStartup.target_customer}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Competitors:</strong> {viewingStartup.competitors}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Scale Up Plan:</strong> {viewingStartup.scale_up_plan}</div>
-                  <div><strong>Revenue Model:</strong> {viewingStartup.revenue_model}</div>
-                  <div><strong>Market Size:</strong> {viewingStartup.market_size}</div>
-                  <div><strong>Video URL:</strong> {viewingStartup.video_url}</div>
-                  <div><strong>Govt Support:</strong> {viewingStartup.govt_support}</div>
-                  <div><strong>Seed Support:</strong> {viewingStartup.seed_support}</div>
-                </div>
-              </div>
-
-              {/* Section 3: Team info */}
-              <div className="view-section">
-                <h3>3. Startup Team Details</h3>
-                <div className="details-grid">
-                  <div><strong>Founder:</strong> {viewingStartup.founder_name}</div>
-                  <div><strong>Co-Founder:</strong> {viewingStartup.co_founder_name}</div>
-                  <div><strong>Team Emails:</strong> {viewingStartup.team_emails}</div>
-                  <div><strong>Team Contacts:</strong> {viewingStartup.team_contacts}</div>
-                  <div><strong>LinkedIn Profiles:</strong> {viewingStartup.linkedin_profiles}</div>
-                  <div><strong>Full Time Employees:</strong> {viewingStartup.full_time_employees}</div>
-                </div>
-              </div>
-
-              {/* Section 4: Requirement */}
-              <div className="view-section">
-                <h3>4. Incubator Expectations & Requirements</h3>
-                <div className="details-grid">
-                  <div style={{gridColumn: "span 2"}}><strong>Why Applying:</strong> {viewingStartup.why_applying}</div>
-                  <div style={{gridColumn: "span 2"}}><strong>Expectations:</strong> {viewingStartup.expectations}</div>
-                  <div><strong>Funds Required:</strong> {viewingStartup.funds_required}</div>
-                  <div><strong>Funding Requirement:</strong> {viewingStartup.funding_requirement}</div>
-                </div>
+              <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto", padding: "8px" }}>
+                {Object.entries(viewingStartup).map(([key, val]) => {
+                  if (["id", "status", "certificate_status", "pitch_date", "pitch_time", "pitch_link"].includes(key)) return null;
+                  return (
+                    <div key={key} style={{ marginBottom: "12px", borderBottom: "1px solid #F1F1F8", paddingBottom: "8px" }}>
+                      <strong style={{ textTransform: "capitalize", fontSize: "12px", color: "#6B6B85" }}>{key.replace(/([A-Z])/g, ' $1')}</strong>
+                      <p style={{ margin: "4px 0 0 0", color: "#161629", fontSize: "14px" }}>{val ? String(val) : "Not Specified"}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* 6. Pitching Modal Block */}
+        {pitchingStartup && (
+          <div className="modal-overlay" onClick={() => setViewingStartup(null)}>
+            <div className="pitch-modal-box" onClick={(e) => e.stopPropagation()}>
+              <h3>Pitching Round — {pitchingStartup.startupName}</h3>
+              <div className="pitch-field">
+                <label>Date</label>
+                <input
+                  type="date"
+                  value={pitchForm.pitch_date}
+                  onChange={(e) => setPitchForm({ ...pitchForm, pitch_date: e.target.value })}
+                />
+              </div>
+              <div className="pitch-field">
+                <label>Time</label>
+                <input
+                  type="time"
+                  value={pitchForm.pitch_time}
+                  onChange={(e) => setPitchForm({ ...pitchForm, pitch_time: e.target.value })}
+                />
+              </div>
+              <div className="pitch-field">
+                <label>Pitch Link</label>
+                <input
+                  type="text"
+                  placeholder="https://meet.google.com/..."
+                  value={pitchForm.pitch_link}
+                  onChange={(e) => setPitchForm({ ...pitchForm, pitch_link: e.target.value })}
+                />
+              </div>
+              <div style={{display: "flex", gap: "10px", marginTop: "8px"}}>
+                <button className="submit-btn" onClick={savePitchDetails}>Save</button>
+                <button className="btn-close" onClick={() => setPitchingStartup(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

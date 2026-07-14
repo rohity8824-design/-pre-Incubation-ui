@@ -149,6 +149,24 @@ def init_db():
     conn.close()
 
 init_db()
+def migrate_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    new_columns = [
+        ("pitch_date", "TEXT"),
+        ("pitch_time", "TEXT"),
+        ("pitch_link", "TEXT"),
+        ("certificate_status", "TEXT DEFAULT 'Not Issued'")
+    ]
+    for col_name, col_type in new_columns:
+        try:
+            cursor.execute(f"ALTER TABLE startups ADD COLUMN {col_name} {col_type}")
+        except sqlite3.OperationalError:
+            pass
+    conn.commit()
+    conn.close()
+
+migrate_db()
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
@@ -425,7 +443,43 @@ def update_status(id):
     try_sending_email(startup["email"], f"Startup Application {status}", status_html)
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
+@app.route('/update-pitching/<int:id>', methods=['POST'])
+@login_required
+def update_pitching(id):
+    data = request.json
+    pitch_date = data.get('pitch_date', '')
+    pitch_time = data.get('pitch_time', '')
+    pitch_link = data.get('pitch_link', '')
 
+    conn = get_db_connection()
+    startup = conn.execute("SELECT * FROM startups WHERE id = ?", (id,)).fetchone()
+    if not startup:
+        conn.close()
+        return jsonify({"error": "Startup not found"}), 404
+
+    conn.execute(
+        "UPDATE startups SET pitch_date = ?, pitch_time = ?, pitch_link = ? WHERE id = ?",
+        (pitch_date, pitch_time, pitch_link, id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Pitching details updated"}), 200
+
+
+@app.route('/update-certificate/<int:id>', methods=['POST'])
+@login_required
+def update_certificate(id):
+    conn = get_db_connection()
+    startup = conn.execute("SELECT * FROM startups WHERE id = ?", (id,)).fetchone()
+    if not startup:
+        conn.close()
+        return jsonify({"error": "Startup not found"}), 404
+
+    new_status = "Issued" if startup["certificate_status"] != "Issued" else "Not Issued"
+    conn.execute("UPDATE startups SET certificate_status = ? WHERE id = ?", (new_status, id))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": f"Certificate {new_status}", "certificate_status": new_status}), 200
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=True)

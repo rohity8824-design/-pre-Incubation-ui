@@ -331,3 +331,28 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
   margin: 0 auto;
 }
 }
+/* ===== ACTION GLOW BUTTONS ===== */
+.action-btn-group{display:flex;gap:8px;flex-wrap:wrap;}
+.glow-btn{
+  border:none;padding:7px 14px;border-radius:20px;font-size:11.5px;font-weight:700;
+  color:#fff;cursor:pointer;letter-spacing:.03em;text-transform:uppercase;
+  box-shadow:0 0 10px 1px var(--glow-color, rgba(0,0,0,0.3));
+  transition:transform .15s;
+}
+.glow-btn:hover{transform:translateY(-1px);}
+.glow-pitch{background:linear-gradient(135deg,#7C4DFF,#5C3DE8);--glow-color:rgba(124,77,255,0.6);}
+.glow-approve{background:linear-gradient(135deg,#00C48C,#00A876);--glow-color:rgba(0,196,140,0.6);}
+.glow-reject{background:linear-gradient(135deg,#FF5A7A,#E8415F);--glow-color:rgba(255,90,122,0.6);}
+.glow-certificate{background:linear-gradient(135deg,#3B82F6,#1D4ED8);--glow-color:rgba(59,130,246,0.6);}
+
+/* ===== PITCHING MODAL ===== */
+.pitch-modal-box{
+  background:#fff;border-radius:16px;padding:24px;max-width:380px;width:90%;
+  border:1px solid var(--border);
+}
+.pitch-modal-box h3{font-size:16px;margin-bottom:16px;}
+.pitch-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.pitch-field label{font-size:12.5px;font-weight:600;color:var(--text-dark);}
+.pitch-field input{
+  padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;
+}
