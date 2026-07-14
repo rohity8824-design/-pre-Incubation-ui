@@ -281,7 +281,7 @@ export default function App() {
             <div>AIC MUJ<small>Incubation Foundation</small></div>
           </div>
           <div className="nav-label">Overview</div>
-          <div className="nav-item active">Dashboard</div>
+          <div className="nav-item active">Pre Incubation</div>
           <div className="nav-item">Applications</div>
           <div className="nav-item">Startups</div>
           <div className="nav-label">Review</div>
