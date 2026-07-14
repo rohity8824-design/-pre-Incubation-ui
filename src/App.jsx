@@ -821,28 +821,98 @@ export default function App() {
           </div>
         )}
 
-        {/* 5. Existing Modal for Viewing Complete Startup Form */}
-        {viewingStartup && (
-          <div className="modal-overlay" onClick={() => setViewingStartup(null)}>
-            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>{viewingStartup.startupName || "Startup Details"}</h2>
-                <button className="close-btn" onClick={() => setViewingStartup(null)}>×</button>
-              </div>
-              <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto", padding: "8px" }}>
-                {Object.entries(viewingStartup).map(([key, val]) => {
-                  if (["id", "status", "certificate_status", "pitch_date", "pitch_time", "pitch_link"].includes(key)) return null;
-                  return (
-                    <div key={key} style={{ marginBottom: "12px", borderBottom: "1px solid #F1F1F8", paddingBottom: "8px" }}>
-                      <strong style={{ textTransform: "capitalize", fontSize: "12px", color: "#6B6B85" }}>{key.replace(/([A-Z])/g, ' $1')}</strong>
-                      <p style={{ margin: "4px 0 0 0", color: "#161629", fontSize: "14px" }}>{val ? String(val) : "Not Specified"}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+{/* 5. Existing Modal for Viewing Complete Startup Form */}
+{viewingStartup && (
+  <div className="modal-overlay" onClick={() => setViewingStartup(null)}>
+    <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header no-print">
+        <div style={{display:"flex", alignItems:"center", gap:"10px"}}>
+          <img src="/aic-logo.png" alt="AIC MUJ" style={{height:"32px"}}/>
+          <img src="/manipal-logo.png" alt="Manipal University Jaipur" style={{height:"32px"}}/>
+        </div>
+        <h2>{viewingStartup.startup_name || "Startup Details"} — Application Details</h2>
+        <div>
+          <button className="btn-print" onClick={() => window.print()}>🖨 Print / Save PDF</button>
+          <button className="btn-close" onClick={() => setViewingStartup(null)}>×</button>
+        </div>
+      </div>
+
+      <div className="modal-body">
+        {/* Section 1 */}
+        <div className="card-head">
+          <div className="num" style={{background:"#6C5CE7"}}>1</div>
+          <div><h3>Applicant's Details</h3><p>Basic details about the applicant</p></div>
+        </div>
+        <div className="details-grid">
+          <div><strong>Name:</strong> {viewingStartup.name}</div>
+          <div><strong>Email:</strong> {viewingStartup.email}</div>
+          <div><strong>Gender:</strong> {viewingStartup.gender}</div>
+          <div><strong>DOB:</strong> {viewingStartup.dob}</div>
+          <div><strong>Contact:</strong> {viewingStartup.contact_number}</div>
+          <div><strong>Native State:</strong> {viewingStartup.native_state}</div>
+          <div><strong>Qualification:</strong> {viewingStartup.highest_qualification}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Address:</strong> {viewingStartup.address}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Experience:</strong> {viewingStartup.professional_experience}</div>
+        </div>
+
+        {/* Section 2 */}
+        <div className="card-head">
+          <div className="num" style={{background:"#FF6B35"}}>2</div>
+          <div><h3>Startup Details</h3><p>Economic model and funding requirement</p></div>
+        </div>
+        <div className="details-grid">
+          <div><strong>Startup Name:</strong> {viewingStartup.startup_name}</div>
+          <div><strong>Company Type:</strong> {viewingStartup.company_type}</div>
+          <div><strong>Incorporation Date:</strong> {viewingStartup.incorporation_date}</div>
+          <div><strong>CIN:</strong> {viewingStartup.cin}</div>
+          <div><strong>GST Number:</strong> {viewingStartup.gst_number}</div>
+          <div><strong>DPIIT No:</strong> {viewingStartup.dpiit_number}</div>
+          <div><strong>Sector:</strong> {viewingStartup.sector}</div>
+          <div><strong>Stage:</strong> {viewingStartup.startup_stage}</div>
+          <div><strong>Website:</strong> {viewingStartup.website_url}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Office Address:</strong> {viewingStartup.office_address}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Problem Statement:</strong> {viewingStartup.problem_statement}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Value Proposition:</strong> {viewingStartup.value_proposition}</div>
+          <div style={{gridColumn:"span 2"}}><strong>USP:</strong> {viewingStartup.usp}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Target Customers:</strong> {viewingStartup.target_customer}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Competitors:</strong> {viewingStartup.competitors}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Scale Up Plan:</strong> {viewingStartup.scale_up_plan}</div>
+          <div><strong>Revenue Model:</strong> {viewingStartup.revenue_model}</div>
+          <div><strong>Market Size:</strong> {viewingStartup.market_size}</div>
+          <div><strong>Video URL:</strong> {viewingStartup.video_url}</div>
+          <div><strong>Govt Support:</strong> {viewingStartup.govt_support}</div>
+          <div><strong>Seed Support:</strong> {viewingStartup.seed_support}</div>
+        </div>
+
+        {/* Section 3 */}
+        <div className="card-head">
+          <div className="num" style={{background:"#00B894"}}>3</div>
+          <div><h3>Startup Team Details</h3><p>Contact and social media details</p></div>
+        </div>
+        <div className="details-grid">
+          <div><strong>Founder:</strong> {viewingStartup.founder_name}</div>
+          <div><strong>Co-Founder:</strong> {viewingStartup.co_founder_name}</div>
+          <div><strong>Team Emails:</strong> {viewingStartup.team_emails}</div>
+          <div><strong>Team Contacts:</strong> {viewingStartup.team_contacts}</div>
+          <div><strong>LinkedIn Profiles:</strong> {viewingStartup.linkedin_profiles}</div>
+          <div><strong>Full Time Employees:</strong> {viewingStartup.full_time_employees}</div>
+        </div>
+
+        {/* Section 4 */}
+        <div className="card-head">
+          <div className="num" style={{background:"#FF4D8D"}}>4</div>
+          <div><h3>Requirement from the Incubator</h3><p>Expectations from AIC GVRAMAN</p></div>
+        </div>
+        <div className="details-grid">
+          <div style={{gridColumn:"span 2"}}><strong>Why Applying:</strong> {viewingStartup.why_applying}</div>
+          <div style={{gridColumn:"span 2"}}><strong>Expectations:</strong> {viewingStartup.expectations}</div>
+          <div><strong>Funds Required:</strong> {viewingStartup.funds_required}</div>
+          <div><strong>Funding Requirement:</strong> {viewingStartup.funding_requirement}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* 6. Pitching Modal Block */}
         {pitchingStartup && (
