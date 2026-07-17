@@ -322,66 +322,89 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .view-grid label{display:block;font-size:11px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
 .view-grid p{font-size:13.5px;color:var(--text-dark);word-break:break-word;}
 
-/* ===== BULLETPROOF PRINT RULES (FIXED PROPER CLASS) ===== */
+/* ===== SUPER AGGRESSIVE 1-PAGE PRINT SYSTEM ===== */
 @media print {
-  /* Sabse pehle pure screen elements ko hide kar do */
+  /* Page size and margins - strictly single page */
+  @page {
+    size: A4 portrait;
+    margin: 5mm !important; /* Margins ko chota kiya taaki sab 1 page me aa jaye */
+  }
+
+  /* Sabhi cheezon ko hide karo, html aur body ko reset karo */
+  html, body {
+    height: 100% !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    font-size: 11px !important; /* Text size thoda chota kiya taaki fit ho jaye */
+  }
+
   body * {
     visibility: hidden !important;
+    display: none !important;
   }
 
-  /* Sirf modal-box (jisme content aur logos hain) ko visible rakho */
-  .modal-overlay, .modal-box, .modal-box * {
+  /* Ab hamare main modal containers ko force-display aur visible karein */
+  /* Isme saare possible class names (.modal-overlay, .modal-box, aur .view-modal) target hain */
+  .modal-overlay, 
+  .modal-overlay *, 
+  .modal-box, 
+  .modal-box *,
+  [class*="modal"] {
     visibility: visible !important;
+    display: block !important;
   }
 
-  /* Modal overlay ko proper alignment ke sath pure page par set karein */
+  /* Modal overlay ko print layout ke top par stretch karein */
   .modal-overlay {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    height: auto !important;
-    background: none !important;
+    height: 100% !important;
+    background: #fff !important;
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
-  /* Report container ko margin collapse se bachayein */
-  .modal-box {
+  /* Modal box ko static background aur 100% width par fit karein */
+  .modal-box, [class*="modal-box"] {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    box-shadow: none !important;
+    height: 100% !important;
     border: none !important;
-    padding: 0 !important;
+    box-shadow: none !important;
+    padding: 10px !important;
     margin: 0 !important;
-    background: #ffffff !important;
+    background: #fff !important;
   }
 
-  /* Print and action buttons ko print sheet se hatayein */
-  .no-print, .btn-print, .btn-close, .btn-save-pdf, .action-btn-group {
-    display: none !important;
-  }
-
-  /* Side-by-side grid detail format */
+  /* Grid layout ko side-by-side display karne ke liye */
   .view-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
+    gap: 8px !important;
   }
 
-  /* Force background colors/logos to load in print page */
+  /* Buttons aur extra actions ko hide karein */
+  .no-print, 
+  button, 
+  .btn-print, 
+  .btn-close, 
+  .btn-save-pdf, 
+  .action-btn-group,
+  .modal-header button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Force enable backgrounds and colors */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 10mm;
   }
 }
 
