@@ -322,15 +322,12 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .view-grid label{display:block;font-size:11px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
 .view-grid p{font-size:13.5px;color:var(--text-dark);word-break:break-word;}
 
-/* ===== SUPER AGGRESSIVE 1-PAGE PRINT SYSTEM ===== */
 @media print {
-  /* Page size aur margins - strictly single page */
   @page {
     size: A4 portrait;
     margin: 5mm !important;
   }
 
-  /* Sabhi cheezon ko hide karo, html aur body ko reset karo */
   html, body {
     height: auto !important;
     overflow: visible !important;
@@ -338,21 +335,12 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
     font-size: 11px !important;
   }
 
-  /* ONLY visibility use karo yahan - display: none mat lagao,
-     warna descendants ko wapas dikhana IMPOSSIBLE ho jaata hai */
-  body * {
-    visibility: hidden !important;
+  /* Portal ki wajah se modal ab body ka direct child hai,
+     isliye sirf poore dashboard (#root) ko hide karna kaafi hai */
+  #root {
+    display: none !important;
   }
 
-  /* Modal aur uske andar sab kuch visible karo */
-  .modal-overlay,
-  .modal-overlay *,
-  .modal-box,
-  .modal-box * {
-    visibility: visible !important;
-  }
-
-  /* Modal overlay ko print layout ke top par stretch karein */
   .modal-overlay {
     position: absolute !important;
     left: 0 !important;
@@ -362,47 +350,40 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
     background: #fff !important;
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
+    display: block !important;
   }
 
-  /* Modal box ko static aur 100% width par fit karein */
-  .modal-box {
-    position: static !important;
+  .modal-content {
     width: 100% !important;
     max-width: 100% !important;
-    height: auto !important;
-    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
     box-shadow: none !important;
+    border-radius: 0 !important;
     padding: 10px !important;
-    margin: 0 !important;
+    position: static !important;
     background: #fff !important;
   }
 
-  /* Grid layout ko side-by-side display karne ke liye */
   .view-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
   }
 
-  /* Buttons aur extra actions ko hide karein - inhe display:none rakhna theek hai,
-     kyunki inke andar koi content nahi jo hume dikhana ho */
   .no-print,
   button,
   .btn-print,
-  .btn-close,
-  .btn-save-pdf,
-  .action-btn-group,
-  .modal-header button {
+  .btn-close {
     display: none !important;
   }
 
-  /* Force enable backgrounds and colors */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 }
+
 /* ===== NEON GLASS ACTION BUTTONS (unique style) ===== */
 .action-btn-group{display:flex;gap:12px;flex-wrap:wrap;}
 
