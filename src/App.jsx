@@ -1,5 +1,6 @@
 import "./styles.css";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom"; // Change 1: Added createPortal Import
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -736,79 +737,141 @@ export default function App() {
             <div className="card-title">Admin Dashboard Dashboard</div>
 
             {checkingAuth ? (
-              <p style={{ padding: "1rem", color: "#6B6B85" }}>Checking access...</p>
+              <p style={{ padding: "1rem", color: "#6B6B85", textAlign: "center" }}>
+                Verifying authorization status, please wait...
+              </p>
             ) : !isLoggedIn ? (
-              // --- LOGIN FORM UI ---
-              <form onSubmit={handleLogin} style={{maxWidth: "320px", display: "flex", flexDirection: "column", gap: "12px", padding: "1rem"}}>
-                <div className="form-field">
+              // --- LOGIN FORM ---
+              <form onSubmit={handleLogin} className="login-form" style={{ padding: "1.5rem", maxWidth: "400px", margin: "0 auto" }}>
+                <h3 style={{ marginBottom: "1rem", fontSize: "1.2rem", color: "#161629" }}>Admin Sign In</h3>
+                {loginError && (
+                  <div style={{ padding: "0.75rem", background: "#FFEAEB", color: "#FF4D8D", borderRadius: "6px", fontSize: "0.85rem", marginBottom: "1rem" }}>
+                    {loginError}
+                  </div>
+                )}
+                <div className="form-field" style={{ marginBottom: "1rem" }}>
                   <label>Username</label>
                   <input
                     type="text"
-                    placeholder="Enter admin username"
                     value={loginForm.username}
-                    onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
-                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                    required
                   />
                 </div>
-                <div className="form-field">
+                <div className="form-field" style={{ marginBottom: "1.5rem" }}>
                   <label>Password</label>
                   <input
                     type="password"
-                    placeholder="Enter password"
                     value={loginForm.password}
-                    onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    required
                   />
                 </div>
-                {loginError && <p style={{ fontSize: "12px", color: "#FF4D8D" }}>{loginError}</p>}
-                <button type="submit" className="submit-btn" style={{ marginTop: "6px" }}>Login as Admin</button>
+                <button type="submit" className="submit-btn" style={{ width: "100%", background: "#6C5CE7" }}>
+                  Login to Dashboard
+                </button>
               </form>
             ) : (
-              // --- APPLICATIONS LIST TABLE ---
-              <div style={{ overflowX: "auto", width: "100%", marginTop: "1rem" }}>
+              // --- ADMIN DASHBOARD APPLICATIONS TABLE ---
+              <div className="table-responsive" style={{ overflowX: "auto", padding: "1rem" }}>
                 <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead>
-                    <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
-                      <th style={{ padding: "12px" }}>ID</th>
-                      <th style={{ padding: "12px" }}>Startup Name</th>
-                      <th style={{ padding: "12px" }}>Founder</th>
-                      <th style={{ padding: "12px" }}>Sector</th>
-                      <th style={{ padding: "12px" }}>Stage</th>
-                      <th style={{ padding: "12px" }}>Status</th>
-                      <th style={{ padding: "12px" }}>Actions</th>
+                    <tr style={{ borderBottom: "2px solid #F1F1F8", color: "#6B6B85", fontSize: "0.85rem" }}>
+                      <th style={{ padding: "0.75rem" }}>Startup Name</th>
+                      <th style={{ padding: "0.75rem" }}>Founder</th>
+                      <th style={{ padding: "0.75rem" }}>Sector</th>
+                      <th style={{ padding: "0.75rem" }}>Stage</th>
+                      <th style={{ padding: "0.75rem" }}>Status</th>
+                      <th style={{ padding: "0.75rem" }}>Pitch Details</th>
+                      <th style={{ padding: "0.75rem", textAlign: "right" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {startups.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No applications found.</td>
-                      </tr>
-                    ) : startups.map((s) => (
-                      <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
-                        <td style={{ padding: "12px" }}>{s.id}</td>
-                        <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
-                        <td style={{ padding: "12px" }}>{s.name}</td>
-                        <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
-                        <td style={{ padding: "12px" }}>{s.startupStage}</td>
-                        <td style={{ padding: "12px" }}>
-                          <span className={`status-pill ${s.status?.toLowerCase()}`} style={{
-                            padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
-                            color: s.status === "Approved" ? "#2E7D32" : s.status === "Rejected" ? "#C62828" : "#F57F17",
-                            background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
-                          }}>{s.status || "Pending"}</span>
-                        </td>
-                        <td style={{ padding: "12px", display: "flex", gap: "8px", alignItems: "center" }}>
-                          <button onClick={() => setViewingStartup(s)} className="btn-small">View</button>
-                          <button onClick={() => openPitchModal(s)} className="btn-small btn-pitch">Pitch</button>
-                          <button onClick={() => downloadFolder(s.id)} className="btn-small btn-dl">Docs</button>
-                          <button onClick={() => toggleCertificate(s.id)} className="btn-small">
-                            {s.has_certificate ? "✓ Cert" : "No Cert"}
-                          </button>
-                          <button onClick={() => updateStatus(s.id, "Approved")} disabled={actionLoadingId === s.id} className="btn-small approved">Approve</button>
-                          <button onClick={() => updateStatus(s.id, "Rejected")} disabled={actionLoadingId === s.id} className="btn-small rejected">Reject</button>
+                        <td colSpan="7" style={{ padding: "2rem", textAlign: "center", color: "#9797B5" }}>
+                          No applications registered yet.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      startups.map((startup) => (
+                        <tr key={startup.id} style={{ borderBottom: "1px solid #F1F1F8", fontSize: "0.9rem" }}>
+                          <td style={{ padding: "0.75rem", fontWeight: "600", color: "#161629" }}>{startup.startupName || "N/A"}</td>
+                          <td style={{ padding: "0.75rem" }}>{startup.founderName || "N/A"}</td>
+                          <td style={{ padding: "0.75rem" }}>{startup.sector || "N/A"}</td>
+                          <td style={{ padding: "0.75rem" }}>{startup.startupStage || "N/A"}</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            <span
+                              className={`badge badge-${(startup.status || "Pending").toLowerCase()}`}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                fontSize: "0.75rem",
+                                fontWeight: "600",
+                                background:
+                                  startup.status === "Approved" ? "#E6F8F1" : startup.status === "Rejected" ? "#FFEAEB" : "#FFF5E6",
+                                color:
+                                  startup.status === "Approved" ? "#00B894" : startup.status === "Rejected" ? "#FF4D8D" : "#FF6B35",
+                              }}
+                            >
+                              {startup.status || "Pending"}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.75rem", fontSize: "0.8rem", color: "#6B6B85" }}>
+                            {startup.pitch_date ? (
+                              <div>
+                                📅 {startup.pitch_date} | 🕒 {startup.pitch_time}
+                              </div>
+                            ) : (
+                              <span style={{ fontStyle: "italic" }}>Not scheduled</span>
+                            )}
+                          </td>
+                          <td style={{ padding: "0.75rem", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                              <button
+                                onClick={() => setViewingStartup(startup)}
+                                style={{ padding: "4px 8px", background: "#f0effc", color: "#6C5CE7", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                View Details
+                              </button>
+                              <button
+                                onClick={() => openPitchModal(startup)}
+                                style={{ padding: "4px 8px", background: "#FFF5E6", color: "#FF6B35", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                Pitching
+                              </button>
+                              <button
+                                onClick={() => toggleCertificate(startup.id)}
+                                disabled={actionLoadingId === startup.id}
+                                style={{ padding: "4px 8px", background: startup.has_certificate ? "#E6F8F1" : "#F1F1F8", color: startup.has_certificate ? "#00B894" : "#6B6B85", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                Cert: {startup.has_certificate ? "On" : "Off"}
+                              </button>
+                              <button
+                                onClick={() => downloadFolder(startup.id)}
+                                style={{ padding: "4px 8px", background: "#EBF5FF", color: "#007BFF", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                Zip docs
+                              </button>
+                              <button
+                                onClick={() => updateStatus(startup.id, "Approved")}
+                                disabled={actionLoadingId === startup.id}
+                                style={{ padding: "4px 8px", background: "#00B894", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={() => updateStatus(startup.id, "Rejected")}
+                                disabled={actionLoadingId === startup.id}
+                                style={{ padding: "4px 8px", background: "#FF4D8D", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -816,126 +879,98 @@ export default function App() {
           </div>
         )}
 
-        {/* --- MODAL 1: VIEWING DETAILED APPLICATION REPORT --- */}
-       {viewingStartup && (
-  <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-    <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
-      
-     {/* ===== BRANDING LOGOS (Print aur PDF dono me dikhenge) ===== */}
-<div className="modal-branding-header" style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottom: "2px solid #6C5CE7",
-    paddingBottom: "16px",
-    marginBottom: "20px"
-}}>
-    {/* Left Logo: AIC MUJ */}
-    <img 
-        src={`${window.location.origin}/aic-logo.png`} 
-        alt="AIC MUJ" 
-        style={{ height: "65px", width: "auto", objectFit: "contain" }} 
-    />
-    
-    {/* Right Logo: Manipal University */}
-    <img 
-        src={`${window.location.origin}/manipal-logo.png`} 
-        alt="Manipal University Jaipur" 
-        style={{ height: "55px", width: "auto", objectFit: "contain" }} 
-    />
-</div>
-
-      {/* ===== MODAL HEADER ===== */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem", alignItems: "center" }}>
-        <h2>Application Deep-Dive Report</h2>
-        <div className="no-print">
-          <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "8px" }}>Print</button>
-          <button className="btn-print" onClick={handleSavePDF} style={{ marginRight: "8px" }}>Save PDF</button>
-          <button className="btn-close" onClick={() => setViewingStartup(null)}>✕</button>
-        </div>
-      </div>
-
-      {/* ===== MODAL BODY CONTENT ===== */}
-      <div className="modal-body" ref={modalBodyRef} style={{ padding: "16px", color: "#16162a" }}>
-        
-        {/* 1. Founder & Personal Profile */}
-        <h3 style={{ color: "#6C5CE7", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>1. Founder & Personal Profile</h3>
-        <div className="view-grid">
-          <p><strong>Full Name: </strong>{viewingStartup.name} ({viewingStartup.gender})</p>
-          <p><strong>Email & Contact: </strong>{viewingStartup.email} | {viewingStartup.contact_number}</p>
-          <p><strong>Date of Birth: </strong>{viewingStartup.dob}</p>
-          <p><strong>Native State & Address: </strong>{viewingStartup.nativeState} | {viewingStartup.address}</p>
-          <p className="full"><strong>Qualifications & Experience: </strong>{viewingStartup.highestQualification} | {viewingStartup.professionalExperience || "None Specified"}</p>
-        </div>
-
-        {/* 2. Core Venture Parameters */}
-        <h3 style={{ color: "#FF6B35", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>2. Core Venture Parameters</h3>
-        <div className="view-grid">
-          <p><strong>Startup Entity Name: </strong>{viewingStartup.startupName || "None Specified"}</p>
-          <p><strong>Sector Focus & Lifecycle Stage: </strong>{viewingStartup.sector} — <span style={{ fontWeight: "bold" }}>{viewingStartup.startupStage}</span></p>
-          <p><strong>Incorporation details: </strong>Date: {viewingStartup.incorporationDate || "N/A"} | CIN: {viewingStartup.cin || "N/A"}</p>
-          <p><strong>Compliance Registration: </strong>GST: {viewingStartup.gstNumber || "N/A"} | DPIIT No: {viewingStartup.dpiitNumber || "N/A"}</p>
-          <p className="full"><strong>Problem Statement Explicitly Tackled: </strong></p>
-          <blockquote style={{ background: "#F8F9FA", padding: "10px", borderLeft: "4px solid #FF6B35" }}>{viewingStartup.problemStatement}</blockquote>
-          <p className="full"><strong>Value Proposition & Core USP: </strong>{viewingStartup.valueProposition} | <span>{viewingStartup.usp}</span></p>
-          <p className="full"><strong>Target Customer Demographics & Market Sizing: </strong>Segment: {viewingStartup.targetCustomers} | Tam/Sam/Som Market Size: {viewingStartup.marketSize}</p>
-          <p className="full"><strong>Competitive Layout & Scale Up Architecture: </strong>Competitors: {viewingStartup.competitors} | Expansion Blueprint: {viewingStartup.scaleUpPlan}</p>
-          <p><strong>Monetization Mechanics (Revenue Model): </strong>{viewingStartup.revenueModel}</p>
-          <p><strong>External Web Footprint: </strong><a href={viewingStartup.websiteUrl} target="_blank" rel="noreferrer">{viewingStartup.websiteUrl || "No Website Linked"}</a></p>
-        </div>
-
-        {/* 3. Strategic Team Dynamic */}
-        <h3 style={{ color: "#00B894", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>3. Strategic Team Dynamic</h3>
-        <div className="view-grid">
-          <p><strong>Founder & Co-Founder Names: </strong>{viewingStartup.coFounderNames || "None"}</p>
-          <p><strong>Team Communication Matrices: </strong>Emails: {viewingStartup.teamEmails} | Phone channels: {viewingStartup.teamContacts}</p>
-          <p className="full"><strong>Human Capital Count: </strong>{viewingStartup.fullTimeEmployees} Full-Time workers managed.</p>
-        </div>
-
-        {/* 4. Incubation Allocation Expectation */}
-        <h3 style={{ color: "#FF7675", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>4. Incubation Allocation Expectation</h3>
-        <div className="view-grid">
-          <p className="full"><strong>Motivation Context for Entry: </strong>{viewingStartup.whyApplying}</p>
-          <p className="full"><strong>Top Requirements expected: </strong>{viewingStartup.expectations}</p>
-          <p className="full"><strong>Capital Allocations requested: </strong>Quantum Needed: {viewingStartup.fundsRequired} | Specific Milestones Structure: {viewingStartup.fundingRequirements}</p>
-        </div>
-
-      </div>
-
-    </div>
-  </div>
-)}
-
-        {/* --- MODAL 2: SCHEDULING PITCH SESSIONS --- */}
-        {pitchingStartup && (
-          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: "#FFF", padding: "2rem", borderRadius: "12px", maxWidth: "450px", width: "90%" }}>
-              <h3>Schedule Evaluation Pitch</h3>
-              <p style={{ fontSize: "14px", color: "#6B6B85", marginBottom: "1rem" }}>Setting target schedule parameters for <strong>{pitchingStartup.startupName}</strong>.</p>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div className="form-field">
-                  <label>Evaluation Date</label>
-                  <input type="date" value={pitchForm.pitch_date} onChange={(e) => setPitchForm({...pitchForm, pitch_date: e.target.value})} />
-                </div>
-                <div className="form-field">
-                  <label>Evaluation Time Slot</label>
-                  <input type="time" value={pitchForm.pitch_time} onChange={(e) => setPitchForm({...pitchForm, pitch_time: e.target.value})} />
-                </div>
-                <div className="form-field">
-                  <label>Virtual Room Url (Meet/Zoom)</label>
-                  <input type="text" placeholder="https://meet.google.com/..." value={pitchForm.pitch_link} onChange={(e) => setPitchForm({...pitchForm, pitch_link: e.target.value})} />
+        {/* --- VIEW APPLICANT MODAL (Change 2: Wrapped inside createPortal) --- */}
+        {viewingStartup && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(22, 22, 41, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "1rem" }}>
+            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", width: "100%", maxWidth: "800px", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
+              <div className="modal-header" style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #F1F1F8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h3 style={{ margin: 0 }}>Application Details</h3>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button onClick={handleSavePDF} style={{ padding: "6px 12px", background: "#6C5CE7", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+                    Export PDF
+                  </button>
+                  <button onClick={() => setViewingStartup(null)} style={{ padding: "6px 12px", background: "#F1F1F8", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+                    Close
+                  </button>
                 </div>
               </div>
+              <div className="modal-body" ref={modalBodyRef} style={{ padding: "2rem", overflowY: "auto", color: "#161629" }}>
+                <h2 style={{ borderBottom: "2px solid #6C5CE7", paddingBottom: "0.5rem" }}>{viewingStartup.startupName || "Unnamed Startup"}</h2>
+                
+                <h3 style={{ marginTop: "1.5rem", color: "#6C5CE7" }}>1. Founder & Applicant Info</h3>
+                <p><strong>Name:</strong> {viewingStartup.name}</p>
+                <p><strong>Email:</strong> {viewingStartup.email}</p>
+                <p><strong>Phone:</strong> {viewingStartup.contactNumber}</p>
+                <p><strong>DOB:</strong> {viewingStartup.dob}</p>
+                <p><strong>Qualification:</strong> {viewingStartup.highestQualification}</p>
+                <p><strong>Professional Experience:</strong> {viewingStartup.professionalExperience}</p>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
-                <button onClick={() => setPitchingStartup(null)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
-                <button onClick={savePitchDetails} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>Save Evaluation Slot</button>
+                <h3 style={{ marginTop: "1.5rem", color: "#FF6B35" }}>2. Core Business Details</h3>
+                <p><strong>Sector:</strong> {viewingStartup.sector}</p>
+                <p><strong>Company Type:</strong> {viewingStartup.companyType}</p>
+                <p><strong>Current Stage:</strong> {viewingStartup.startupStage}</p>
+                <p><strong>Problem Statement:</strong> {viewingStartup.problemStatement}</p>
+                <p><strong>Value Proposition:</strong> {viewingStartup.valueProposition}</p>
+                <p><strong>USP:</strong> {viewingStartup.usp}</p>
+                <p><strong>Revenue Model:</strong> {viewingStartup.revenueModel}</p>
+                <p><strong>Target Customer:</strong> {viewingStartup.targetCustomer}</p>
+
+                <h3 style={{ marginTop: "1.5rem", color: "#00B894" }}>3. Team & Financial Expectations</h3>
+                <p><strong>Co-Founders:</strong> {viewingStartup.coFounderName || "None"}</p>
+                <p><strong>Full Time Employees:</strong> {viewingStartup.fullTimeEmployees || "0"}</p>
+                <p><strong>Why Incubation?:</strong> {viewingStartup.whyApplying}</p>
+                <p><strong>Expectations:</strong> {viewingStartup.expectations}</p>
+                <p><strong>Funds Required:</strong> {viewingStartup.fundsRequired}</p>
+              </div>
+            </div>
+          </div>,
+          document.body // Change 3: Portal target element
+        )}
+
+        {/* --- SCHEDULE PITCHING MODAL --- */}
+        {pitchingStartup && (
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(22, 22, 41, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", width: "100%", maxWidth: "450px", padding: "1.5rem" }}>
+              <h3>Schedule Pitching Round</h3>
+              <p style={{ color: "#6B6B85", fontSize: "0.85rem", marginBottom: "1rem" }}>
+                Set the presentation parameters for <strong>{pitchingStartup.startupName}</strong>.
+              </p>
+              <div className="form-field" style={{ marginBottom: "1rem" }}>
+                <label>Pitch Date</label>
+                <input
+                  type="date"
+                  value={pitchForm.pitch_date}
+                  onChange={(e) => setPitchForm({ ...pitchForm, pitch_date: e.target.value })}
+                />
+              </div>
+              <div className="form-field" style={{ marginBottom: "1rem" }}>
+                <label>Pitch Time</label>
+                <input
+                  type="time"
+                  value={pitchForm.pitch_time}
+                  onChange={(e) => setPitchForm({ ...pitchForm, pitch_time: e.target.value })}
+                />
+              </div>
+              <div className="form-field" style={{ marginBottom: "1.5rem" }}>
+                <label>Meeting Link (e.g. Teams, Zoom, Meet)</label>
+                <input
+                  type="text"
+                  placeholder="https://"
+                  value={pitchForm.pitch_link}
+                  onChange={(e) => setPitchForm({ ...pitchForm, pitch_link: e.target.value })}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button onClick={() => setPitchingStartup(null)} style={{ padding: "8px 16px", background: "#F1F1F8", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={savePitchDetails} style={{ padding: "8px 16px", background: "#6C5CE7", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+                  Save Parameters
+                </button>
               </div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
