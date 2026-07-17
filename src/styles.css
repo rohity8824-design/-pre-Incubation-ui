@@ -321,58 +321,58 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .view-grid label{display:block;font-size:11px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
 .view-grid p{font-size:13.5px;color:var(--text-dark);word-break:break-word;}
 
-/* ===== OPTIMIZED PRINT RULES ===== */
+/* ===== NEW OPTIMIZED PRINT RULES ===== */
 @media print {
-  /* Poore page par background colors aur graphics force karne ke liye */
-  html, body {
-    background: #ffffff !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Modal ke alawa screen par jo kuch bhi hai sab ko bilkul gayab kar do */
-  body > *:not(.modal-overlay) {
+  /* Screen ke baki sabhi background elements ko hide karein */
+  body > *:not(#root), 
+  #root > *:not(.modal-overlay) {
     display: none !important;
   }
 
-  /* Modal overlay aur box ko set karo taaki bina margin ke clean display ho */
+  /* Modal overlay ko proper print setting dein */
   .modal-overlay {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    background: white !important;
+    position: static !important;
+    background: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
     overflow: visible !important;
   }
 
-  .modal-box {
-    border: none !important;
-    box-shadow: none !important;
+  /* Modal content ko full page width par set karein */
+  .modal-content {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 10px !important;
+    box-shadow: none !important;
+    border: none !important;
     margin: 0 !important;
+    padding: 10px !important;
+    background: #ffffff !important;
   }
 
-  /* Print buttons ko print sheet par chhipao */
-  .no-print, .btn-print, .btn-close, .action-btn-group, .btn-save-pdf {
+  /* Buttons ko bilkul hide karein taaki print me na aayein */
+  .no-print, .btn-print, .btn-close, .btn-save-pdf, .action-btn-group {
     display: none !important;
   }
 
-  /* Grid details print par proper spacing ke sath aayein */
+  /* Grid details ko safe side-by-side format dein */
   .view-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 12px !important;
   }
 
-  /* Page margins adjustment to avoid unnecessary extra pages */
+  /* Page margins control */
   @page {
     size: A4 portrait;
-    margin: 15mm 15mm 15mm 15mm;
+    margin: 15mm;
+  }
+
+  /* Pure colors print karne ke liye browser ko force karein */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 /* ===== NEON GLASS ACTION BUTTONS (unique style) ===== */

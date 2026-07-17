@@ -821,29 +821,29 @@ export default function App() {
   <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
     <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
       
-      {/* ===== BRANDING LOGOS (Print aur PDF dono me dikhenge) ===== */}
-      <div className="modal-branding-header" style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderBottom: "2px solid #6C5CE7",
-        paddingBottom: "16px",
-        marginBottom: "20px"
-      }}>
-        {/* Left Logo: AIC MUJ */}
-        <img 
-          src="/aic-logo.png" 
-          alt="AIC MUJ" 
-          style={{ height: "65px", width: "auto", objectFit: "contain" }} 
-        />
-        
-        {/* Right Logo: Manipal University */}
-        <img 
-          src="/manipal-logo.png" 
-          alt="Manipal University Jaipur" 
-          style={{ height: "55px", width: "auto", objectFit: "contain" }} 
-        />
-      </div>
+     {/* ===== BRANDING LOGOS (Print aur PDF dono me dikhenge) ===== */}
+<div className="modal-branding-header" style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "2px solid #6C5CE7",
+    paddingBottom: "16px",
+    marginBottom: "20px"
+}}>
+    {/* Left Logo: AIC MUJ */}
+    <img 
+        src={`${window.location.origin}/aic-logo.png`} 
+        alt="AIC MUJ" 
+        style={{ height: "65px", width: "auto", objectFit: "contain" }} 
+    />
+    
+    {/* Right Logo: Manipal University */}
+    <img 
+        src={`${window.location.origin}/manipal-logo.png`} 
+        alt="Manipal University Jaipur" 
+        style={{ height: "55px", width: "auto", objectFit: "contain" }} 
+    />
+</div>
 
       {/* ===== MODAL HEADER ===== */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem", alignItems: "center" }}>
