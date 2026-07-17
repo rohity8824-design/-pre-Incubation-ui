@@ -83,7 +83,7 @@ export default function App() {
   // --- REFS ---
   const reportRef = useRef(null);
   const modalBodyRef = useRef(null);
-
+  const printRef = useRef(null);
   // --- RE-AUTH & VIEW CHECK ON LOAD ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -861,7 +861,7 @@ export default function App() {
       </div>
 
       {/* ===== MODAL BODY CONTENT ===== */}
-      <div className="modal-body" ref={modalBodyRef} style={{ padding: "16px", color: "#16162a" }}>
+      <div className="modal-body" ref={modalBodyRef} style={{ padding: "16px", color: "#16162a" }}> 
         
         {/* 1. Founder & Personal Profile */}
         <h3 style={{ color: "#6C5CE7", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>1. Founder & Personal Profile</h3>
