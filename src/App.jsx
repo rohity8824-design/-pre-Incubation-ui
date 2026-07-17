@@ -178,29 +178,33 @@ export default function App() {
 
   // --- PDF EXPORT FUNCTION WITH MULTI-PAGE SPLITTING ---
   const handleSavePDF = async () => {
-    const element = modalBodyRef.current;
-    if (!element) return;
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+  const element = printRef.current;
+  if (!element) return;
+  const canvas = await html2canvas(element, { 
+    scale: 2, 
+    useCORS: true,
+    ignoreElements: (el) => el.classList && el.classList.contains('no-print')
+  });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
 
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
     pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save(`${viewingStartup.startupName || "startup"}_application.pdf`);
-  };
+  }
+  pdf.save(`${viewingStartup.startupName || "startup"}_application.pdf`);
+};
 
   const openPitchModal = (startup) => {
     setPitchingStartup(startup);
@@ -820,7 +824,7 @@ export default function App() {
         {/* --- MODAL 1: VIEWING DETAILED APPLICATION REPORT --- */}
        {viewingStartup && createPortal(
   <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-    <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
+   <div className="modal-content" ref={printRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}> 
       
      {/* ===== BRANDING LOGOS (Print aur PDF dono me dikhenge) ===== */}
 <div className="modal-branding-header" style={{
