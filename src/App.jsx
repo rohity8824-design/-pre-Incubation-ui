@@ -819,17 +819,90 @@ export default function App() {
         {/* --- MODAL 1: VIEWING DETAILED APPLICATION REPORT --- */}
         {viewingStartup && (
           <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: "#FFF", padding: "2rem", borderRadius: "12px", maxWidth: "800px", width: "90%", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-                <h2>Application Deep-Dive Report</h2>
-                <div>
-                  <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "6px" }}>🖨 Print</button>
-                  <button className="btn-print" onClick={handleSavePDF} style={{ marginRight: "10px" }}>💾 Save PDF</button>
-                  <button className="btn-close" onClick={() => setViewingStartup(null)}>×</button>
-                </div>
-              </div>
+            {viewingStartup && (
+  <div className="modal-overlay">
+    <div className="modal-box" ref={modalBodyRef}>
+      
+      {/* Dynamic Header with Branding Logos */}
+      <div className="modal-branding-header" style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderBottom: "2px solid #6C5CE7",
+        paddingBottom: "16px",
+        marginBottom: "20px"
+      }}>
+        {/* Left: AIC MUJ Logo */}
+        <img 
+          src="/aic-logo.png" 
+          alt="AIC MUJ" 
+          style={{ height: "65px", width: "auto", objectFit: "contain" }} 
+        />
+        
+        {/* Right: Manipal University Jaipur Logo */}
+        <img 
+          src="/manipal-logo.png" 
+          alt="Manipal University Jaipur" 
+          style={{ height: "55px", width: "auto", objectFit: "contain" }} 
+        />
+      </div>
 
-              <div className="modal-body" ref={modalBodyRef} style={{ padding: "10px", color: "#161629" }}>
+      <div className="modal-header">
+        <div>
+          <h2>Application Deep-Dive Report</h2>
+          <p style={{ color: "#6B6B85", fontSize: "12px", marginTop: "4px" }}>
+            Startup: <strong>{viewingStartup.startupName || "N/A"}</strong>
+          </p>
+        </div>
+        <div className="no-print" style={{ display: "flex", gap: "8px" }}>
+          <button className="btn-print" onClick={() => window.print()}>Print Report</button>
+          <button className="btn-print" style={{ background: "#FF6B35" }} onClick={handleSavePDF}>Save PDF</button>
+          <button className="btn-close" onClick={() => setViewingStartup(null)}>✕</button>
+        </div>
+      </div>
+
+      {/* Main Form Report Details */}
+      <div className="view-section">
+        <h3>1. Founder & Personal Profile</h3>
+        <div className="view-grid">
+          <div>
+            <label>Full Name</label>
+            <p>{viewingStartup.name} ({viewingStartup.gender})</p>
+          </div>
+          <div>
+            <label>Email & Contact</label>
+            <p>{viewingStartup.email} | {viewingStartup.contact_number}</p>
+          </div>
+          <div className="full">
+            <label>Address</label>
+            <p>{viewingStartup.address}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="view-section">
+        <h3>2. Core Venture Parameters</h3>
+        <div className="view-grid">
+          <div>
+            <label>Startup Entity Name</label>
+            <p>{viewingStartup.startupName || "None Specified"}</p>
+          </div>
+          <div>
+            <label>Sector & Stage</label>
+            <p>{viewingStartup.sector} — {viewingStartup.startupStage}</p>
+          </div>
+          <div className="full">
+            <label>Problem Statement</label>
+            <p>{viewingStartup.problemStatement}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Aapke baaki ke form sections (3. Strategic Team, 4. Expectations, etc.) yahan as-is chalenge */}
+
+    </div>
+  </div>
+)}
                 <h3 style={{ color: "#6C5CE7", borderBottom: "1px solid #EEE", paddingBottom: "4px" }}>1. Founder & Personal Profile</h3>
                 <p><strong>Full Name:</strong> {viewingStartup.name} ({viewingStartup.gender})</p>
                 <p><strong>Email & Contact:</strong> {viewingStartup.email} | {viewingStartup.contactNumber}</p>

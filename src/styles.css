@@ -321,15 +321,59 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .view-grid label{display:block;font-size:11px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
 .view-grid p{font-size:13.5px;color:var(--text-dark);word-break:break-word;}
 
-@media print{
-  body *{visibility:hidden;}
-  .modal-box, .modal-box *{visibility:visible;}
-  .modal-box{position:absolute;top:0;left:0;width:100%;box-shadow:none;}
-  .no-print{display:none !important;}
-  .form-only .app {
-  max-width: 900px;
-  margin: 0 auto;
-}
+/* ===== OPTIMIZED PRINT RULES ===== */
+@media print {
+  /* Poore page par background colors aur graphics force karne ke liye */
+  html, body {
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Modal ke alawa screen par jo kuch bhi hai sab ko bilkul gayab kar do */
+  body > *:not(.modal-overlay) {
+    display: none !important;
+  }
+
+  /* Modal overlay aur box ko set karo taaki bina margin ke clean display ho */
+  .modal-overlay {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .modal-box {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px !important;
+    margin: 0 !important;
+  }
+
+  /* Print buttons ko print sheet par chhipao */
+  .no-print, .btn-print, .btn-close, .action-btn-group, .btn-save-pdf {
+    display: none !important;
+  }
+
+  /* Grid details print par proper spacing ke sath aayein */
+  .view-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Page margins adjustment to avoid unnecessary extra pages */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
 }
 /* ===== NEON GLASS ACTION BUTTONS (unique style) ===== */
 .action-btn-group{display:flex;gap:12px;flex-wrap:wrap;}
