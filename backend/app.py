@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import smtplib
 import shutil
@@ -20,7 +21,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-to-a-random-secret-string-later')
 
 # Cookies aur Session support ke liye explicit origins set kiya hai
-CORS(app, supports_credentials=True, origins=["https://pre-incubation-ui.vercel.app", "http://localhost:5173"])
+import re
+
+CORS(app, supports_credentials=True, origins=[
+    "https://pre-incubation-ui.vercel.app",
+    re.compile(r"https://pre-incubation.*\.vercel\.app"),
+    "http://localhost:5173"
+])
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
