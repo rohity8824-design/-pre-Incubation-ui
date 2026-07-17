@@ -288,6 +288,7 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 }
 .card-head h3{font-size:16px;font-weight:700;margin:0;}
 .card-head p{font-size:12px;color:var(--text-mid);margin-top:1px;}
+
 /* ===== VIEW APPLICATION MODAL ===== */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(18,18,43,.55);
@@ -321,60 +322,69 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .view-grid label{display:block;font-size:11px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
 .view-grid p{font-size:13.5px;color:var(--text-dark);word-break:break-word;}
 
-/* ===== NEW OPTIMIZED PRINT RULES ===== */
+/* ===== BULLETPROOF PRINT RULES (FIXED PROPER CLASS) ===== */
 @media print {
-  /* Screen ke baki sabhi background elements ko hide karein */
-  body > *:not(#root), 
-  #root > *:not(.modal-overlay) {
-    display: none !important;
+  /* Sabse pehle pure screen elements ko hide kar do */
+  body * {
+    visibility: hidden !important;
   }
 
-  /* Modal overlay ko proper print setting dein */
+  /* Sirf modal-box (jisme content aur logos hain) ko visible rakho */
+  .modal-overlay, .modal-box, .modal-box * {
+    visibility: visible !important;
+  }
+
+  /* Modal overlay ko proper alignment ke sath pure page par set karein */
   .modal-overlay {
-    position: static !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
     background: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    width: 100% !important;
-    height: auto !important;
     overflow: visible !important;
   }
 
-  /* Modal content ko full page width par set karein */
-  .modal-content {
+  /* Report container ko margin collapse se bachayein */
+  .modal-box {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     box-shadow: none !important;
     border: none !important;
+    padding: 0 !important;
     margin: 0 !important;
-    padding: 10px !important;
     background: #ffffff !important;
   }
 
-  /* Buttons ko bilkul hide karein taaki print me na aayein */
+  /* Print and action buttons ko print sheet se hatayein */
   .no-print, .btn-print, .btn-close, .btn-save-pdf, .action-btn-group {
     display: none !important;
   }
 
-  /* Grid details ko safe side-by-side format dein */
+  /* Side-by-side grid detail format */
   .view-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 12px !important;
   }
 
-  /* Page margins control */
-  @page {
-    size: A4 portrait;
-    margin: 15mm;
-  }
-
-  /* Pure colors print karne ke liye browser ko force karein */
+  /* Force background colors/logos to load in print page */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
 }
+
 /* ===== NEON GLASS ACTION BUTTONS (unique style) ===== */
 .action-btn-group{display:flex;gap:12px;flex-wrap:wrap;}
 
