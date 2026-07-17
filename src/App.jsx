@@ -817,13 +817,11 @@ export default function App() {
         )}
 
         {/* --- MODAL 1: VIEWING DETAILED APPLICATION REPORT --- */}
-        {viewingStartup && (
-          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            {viewingStartup && (
-  <div className="modal-overlay">
-    <div className="modal-box" ref={modalBodyRef}>
+       {viewingStartup && (
+  <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+    <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
       
-      {/* Dynamic Header with Branding Logos */}
+      {/* ===== BRANDING LOGOS (Print aur PDF dono me dikhenge) ===== */}
       <div className="modal-branding-header" style={{
         display: "flex",
         justifyContent: "space-between",
@@ -832,14 +830,14 @@ export default function App() {
         paddingBottom: "16px",
         marginBottom: "20px"
       }}>
-        {/* Left: AIC MUJ Logo */}
+        {/* Left Logo: AIC MUJ */}
         <img 
           src="/aic-logo.png" 
           alt="AIC MUJ" 
           style={{ height: "65px", width: "auto", objectFit: "contain" }} 
         />
         
-        {/* Right: Manipal University Jaipur Logo */}
+        {/* Right Logo: Manipal University */}
         <img 
           src="/manipal-logo.png" 
           alt="Manipal University Jaipur" 
@@ -847,95 +845,66 @@ export default function App() {
         />
       </div>
 
-      <div className="modal-header">
-        <div>
-          <h2>Application Deep-Dive Report</h2>
-          <p style={{ color: "#6B6B85", fontSize: "12px", marginTop: "4px" }}>
-            Startup: <strong>{viewingStartup.startupName || "N/A"}</strong>
-          </p>
-        </div>
-        <div className="no-print" style={{ display: "flex", gap: "8px" }}>
-          <button className="btn-print" onClick={() => window.print()}>Print Report</button>
-          <button className="btn-print" style={{ background: "#FF6B35" }} onClick={handleSavePDF}>Save PDF</button>
+      {/* ===== MODAL HEADER ===== */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem", alignItems: "center" }}>
+        <h2>Application Deep-Dive Report</h2>
+        <div className="no-print">
+          <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "8px" }}>Print</button>
+          <button className="btn-print" onClick={handleSavePDF} style={{ marginRight: "8px" }}>Save PDF</button>
           <button className="btn-close" onClick={() => setViewingStartup(null)}>✕</button>
         </div>
       </div>
 
-      {/* Main Form Report Details */}
-      <div className="view-section">
-        <h3>1. Founder & Personal Profile</h3>
+      {/* ===== MODAL BODY CONTENT ===== */}
+      <div className="modal-body" ref={modalBodyRef} style={{ padding: "16px", color: "#16162a" }}>
+        
+        {/* 1. Founder & Personal Profile */}
+        <h3 style={{ color: "#6C5CE7", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>1. Founder & Personal Profile</h3>
         <div className="view-grid">
-          <div>
-            <label>Full Name</label>
-            <p>{viewingStartup.name} ({viewingStartup.gender})</p>
-          </div>
-          <div>
-            <label>Email & Contact</label>
-            <p>{viewingStartup.email} | {viewingStartup.contact_number}</p>
-          </div>
-          <div className="full">
-            <label>Address</label>
-            <p>{viewingStartup.address}</p>
-          </div>
+          <p><strong>Full Name: </strong>{viewingStartup.name} ({viewingStartup.gender})</p>
+          <p><strong>Email & Contact: </strong>{viewingStartup.email} | {viewingStartup.contact_number}</p>
+          <p><strong>Date of Birth: </strong>{viewingStartup.dob}</p>
+          <p><strong>Native State & Address: </strong>{viewingStartup.nativeState} | {viewingStartup.address}</p>
+          <p className="full"><strong>Qualifications & Experience: </strong>{viewingStartup.highestQualification} | {viewingStartup.professionalExperience || "None Specified"}</p>
         </div>
-      </div>
 
-      <div className="view-section">
-        <h3>2. Core Venture Parameters</h3>
+        {/* 2. Core Venture Parameters */}
+        <h3 style={{ color: "#FF6B35", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>2. Core Venture Parameters</h3>
         <div className="view-grid">
-          <div>
-            <label>Startup Entity Name</label>
-            <p>{viewingStartup.startupName || "None Specified"}</p>
-          </div>
-          <div>
-            <label>Sector & Stage</label>
-            <p>{viewingStartup.sector} — {viewingStartup.startupStage}</p>
-          </div>
-          <div className="full">
-            <label>Problem Statement</label>
-            <p>{viewingStartup.problemStatement}</p>
-          </div>
+          <p><strong>Startup Entity Name: </strong>{viewingStartup.startupName || "None Specified"}</p>
+          <p><strong>Sector Focus & Lifecycle Stage: </strong>{viewingStartup.sector} — <span style={{ fontWeight: "bold" }}>{viewingStartup.startupStage}</span></p>
+          <p><strong>Incorporation details: </strong>Date: {viewingStartup.incorporationDate || "N/A"} | CIN: {viewingStartup.cin || "N/A"}</p>
+          <p><strong>Compliance Registration: </strong>GST: {viewingStartup.gstNumber || "N/A"} | DPIIT No: {viewingStartup.dpiitNumber || "N/A"}</p>
+          <p className="full"><strong>Problem Statement Explicitly Tackled: </strong></p>
+          <blockquote style={{ background: "#F8F9FA", padding: "10px", borderLeft: "4px solid #FF6B35" }}>{viewingStartup.problemStatement}</blockquote>
+          <p className="full"><strong>Value Proposition & Core USP: </strong>{viewingStartup.valueProposition} | <span>{viewingStartup.usp}</span></p>
+          <p className="full"><strong>Target Customer Demographics & Market Sizing: </strong>Segment: {viewingStartup.targetCustomers} | Tam/Sam/Som Market Size: {viewingStartup.marketSize}</p>
+          <p className="full"><strong>Competitive Layout & Scale Up Architecture: </strong>Competitors: {viewingStartup.competitors} | Expansion Blueprint: {viewingStartup.scaleUpPlan}</p>
+          <p><strong>Monetization Mechanics (Revenue Model): </strong>{viewingStartup.revenueModel}</p>
+          <p><strong>External Web Footprint: </strong><a href={viewingStartup.websiteUrl} target="_blank" rel="noreferrer">{viewingStartup.websiteUrl || "No Website Linked"}</a></p>
         </div>
-      </div>
 
-      {/* Aapke baaki ke form sections (3. Strategic Team, 4. Expectations, etc.) yahan as-is chalenge */}
+        {/* 3. Strategic Team Dynamic */}
+        <h3 style={{ color: "#00B894", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>3. Strategic Team Dynamic</h3>
+        <div className="view-grid">
+          <p><strong>Founder & Co-Founder Names: </strong>{viewingStartup.coFounderNames || "None"}</p>
+          <p><strong>Team Communication Matrices: </strong>Emails: {viewingStartup.teamEmails} | Phone channels: {viewingStartup.teamContacts}</p>
+          <p className="full"><strong>Human Capital Count: </strong>{viewingStartup.fullTimeEmployees} Full-Time workers managed.</p>
+        </div>
+
+        {/* 4. Incubation Allocation Expectation */}
+        <h3 style={{ color: "#FF7675", borderBottom: "1px solid #EEE", paddingBottom: "8px", marginTop: "1.5rem" }}>4. Incubation Allocation Expectation</h3>
+        <div className="view-grid">
+          <p className="full"><strong>Motivation Context for Entry: </strong>{viewingStartup.whyApplying}</p>
+          <p className="full"><strong>Top Requirements expected: </strong>{viewingStartup.expectations}</p>
+          <p className="full"><strong>Capital Allocations requested: </strong>Quantum Needed: {viewingStartup.fundsRequired} | Specific Milestones Structure: {viewingStartup.fundingRequirements}</p>
+        </div>
+
+      </div>
 
     </div>
   </div>
 )}
-                <h3 style={{ color: "#6C5CE7", borderBottom: "1px solid #EEE", paddingBottom: "4px" }}>1. Founder & Personal Profile</h3>
-                <p><strong>Full Name:</strong> {viewingStartup.name} ({viewingStartup.gender})</p>
-                <p><strong>Email & Contact:</strong> {viewingStartup.email} | {viewingStartup.contactNumber}</p>
-                <p><strong>Date of Birth:</strong> {viewingStartup.dob}</p>
-                <p><strong>Native State & Address:</strong> {viewingStartup.nativeState} | {viewingStartup.address}</p>
-                <p><strong>Qualifications & Experience:</strong> {viewingStartup.highestQualification} | {viewingStartup.professionalExperience || "None Specified"}</p>
-
-                <h3 style={{ color: "#FF6B35", borderBottom: "1px solid #EEE", paddingBottom: "4px", marginTop: "1.5rem" }}>2. Core Venture Parameters</h3>
-                <p><strong>Startup Entity Name:</strong> {viewingStartup.startupName} ({viewingStartup.companyType})</p>
-                <p><strong>Sector Focus & Lifecycle Stage:</strong> {viewingStartup.sector} — <span style={{ fontWeight: "bold" }}>{viewingStartup.startupStage}</span></p>
-                <p><strong>Incorporation details:</strong> Date: {viewingStartup.incorporationDate || "N/A"} | CIN: {viewingStartup.cin || "N/A"}</p>
-                <p><strong>Compliance Registration:</strong> GST: {viewingStartup.gstNumber || "N/A"} | DPIIT No: {viewingStartup.dpiitNumber || "N/A"}</p>
-                <p><strong>Problem Statement Explicitly Tackled:</strong></p>
-                <blockquote style={{ background: "#F9F9FB", padding: "10px", borderLeft: "4px solid #FF6B35" }}>{viewingStartup.problemStatement}</blockquote>
-                <p><strong>Value Proposition & Core USP:</strong> {viewingStartup.valueProposition} | <span style={{ textDecoration: "underline" }}>{viewingStartup.usp}</span></p>
-                <p><strong>Target Customer Demographics & Market Sizing:</strong> Segment: {viewingStartup.targetCustomer} | Tam/Sam/Som Market Size: {viewingStartup.marketSize}</p>
-                <p><strong>Competitive Layout & Scale Up Architecture:</strong> Competitors: {viewingStartup.competitors} | Expansion Blueprint: {viewingStartup.scaleUpPlan}</p>
-                <p><strong>Monetization Mechanics (Revenue Model):</strong> {viewingStartup.revenueModel}</p>
-                <p><strong>External Web Footprint:</strong> <a href={viewingStartup.websiteUrl} target="_blank" rel="noreferrer">{viewingStartup.websiteUrl || "No Website Linked"}</a></p>
-
-                <h3 style={{ color: "#00B894", borderBottom: "1px solid #EEE", paddingBottom: "4px", marginTop: "1.5rem" }}>3. Strategic Team Dynamic</h3>
-                <p><strong>Founder & Co-Founder Names:</strong> {viewingStartup.founderName} / {viewingStartup.coFounderName || "None"}</p>
-                <p><strong>Team Communication Matrices:</strong> Emails: {viewingStartup.teamEmails} | Phone channels: {viewingStartup.teamContacts}</p>
-                <p><strong>Human Capital Count:</strong> {viewingStartup.fullTimeEmployees} Full-Time workers managed.</p>
-
-                <h3 style={{ color: "#FF4D8D", borderBottom: "1px solid #EEE", paddingBottom: "4px", marginTop: "1.5rem" }}>4. Incubation Allocation Expectation</h3>
-                <p><strong>Motivation Context for Entry:</strong> {viewingStartup.whyApplying}</p>
-                <p><strong>Top Requirements expected:</strong> {viewingStartup.expectations}</p>
-                <p><strong>Capital Allocations requested:</strong> Quantum Needed: {viewingStartup.fundsRequired} | Specific Milestones Structure: {viewingStartup.fundingRequirement}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* --- MODAL 2: SCHEDULING PITCH SESSIONS --- */}
         {pitchingStartup && (
