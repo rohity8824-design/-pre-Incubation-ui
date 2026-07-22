@@ -71,6 +71,7 @@ export default function App() {
     certificate: null,
     businessPlan: null,
     otherDocument: null,
+    passportPhoto: null,
   });
 
   const [startups, setStartups] = useState([]);
@@ -290,7 +291,7 @@ export default function App() {
       teamContacts: "", linkedinProfiles: "", fullTimeEmployees: "", whyApplying: "",
       expectations: "", fundsRequired: "", fundingRequirement: "",
     });
-    setFiles({ pitchDeck: null, resume: null, panCard: null, certificate: null, businessPlan: null, otherDocument: null });
+    setFiles({ pitchDeck: null, resume: null, panCard: null, certificate: null, businessPlan: null, otherDocument: null, passportPhoto: null });
   };
 
   // --- SUBMIT REGISTRATION WITH CREDENTIALS ---
@@ -308,6 +309,7 @@ export default function App() {
       data.append("certificate", files.certificate);
       data.append("businessPlan", files.businessPlan);
       if (files.otherDocument) data.append("otherDocument", files.otherDocument);
+      if (files.passportPhoto) data.append("passportPhoto", files.passportPhoto);
 
       const response = await fetch(`${BASE_URL}/register`, {
         method: "POST",
@@ -728,6 +730,7 @@ export default function App() {
               <input type="file" accept=".pdf,.png,.jpg,.jpeg" disabled={isSubmitting}
                 onChange={(e) => setFiles({...files, otherDocument: e.target.files[0]})}/>
             </div>
+            <div className="file-upload"> <label>Upload Passport Size Photo</label> <input type="file" accept=".png,.jpg,.jpeg" disabled={isSubmitting} onChange={(e) => setFiles({...files, passportPhoto: e.target.files[0]})}/> </div>
           </div>
 
           <button className="submit-btn" onClick={handleSubmit} disabled={isSubmitting} style={{ opacity: isSubmitting ? 0.7 : 1 }}>
