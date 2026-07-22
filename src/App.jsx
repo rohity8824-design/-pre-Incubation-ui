@@ -1072,25 +1072,25 @@ const handleSaveEvaluationPDF = async () => {
 
       <table className="eval-table" style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", marginBottom: "1.5rem" }}>
   <colgroup>
-    <col style={{ width: "5%" }} />
-    <col style={{ width: "28%" }} />
-    <col style={{ width: "8%" }} />
-    <col style={{ width: "8%" }} />
-    <col style={{ width: "8%" }} />
-    <col style={{ width: "8%" }} />
-    <col style={{ width: "35%" }} />
-  </colgroup>
+  <col style={{ width: "5%" }} />
+  <col style={{ width: "24%" }} />
+  <col style={{ width: "9%" }} />
+  <col style={{ width: "9%" }} />
+  <col style={{ width: "9%" }} />
+  <col style={{ width: "9%" }} />
+  <col style={{ width: "35%" }} />
+</colgroup>
   <thead>
-    <tr style={{ background: "#F1F1F8" }}>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "12px" }}>Sr No</th>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "left", fontSize: "12px" }}>Parameters</th>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Poor (1)</th>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Average (2)</th>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Good (3)</th>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Excellent (4)</th>
-      <th style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "left", fontSize: "12px" }}>Observation</th>
-    </tr>
-  </thead>
+  <tr style={{ background: "#F1F1F8" }}>
+    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px", wordBreak: "break-word", lineHeight: "1.2" }}>Sr No</th>
+    <th style={{ padding: "4px 6px", border: "1px solid #DCDCE7", textAlign: "left", fontSize: "11px", wordBreak: "break-word", lineHeight: "1.2" }}>Parameters</th>
+    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px", wordBreak: "break-word", lineHeight: "1.2" }}>Poor<br/>(1)</th>
+    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px", wordBreak: "break-word", lineHeight: "1.2" }}>Average<br/>(2)</th>
+    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px", wordBreak: "break-word", lineHeight: "1.2" }}>Good<br/>(3)</th>
+    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px", wordBreak: "break-word", lineHeight: "1.2" }}>Excellent<br/>(4)</th>
+    <th style={{ padding: "4px 6px", border: "1px solid #DCDCE7", textAlign: "left", fontSize: "11px", wordBreak: "break-word", lineHeight: "1.2" }}>Observation</th>
+  </tr>
+</thead>
   <tbody>
     {[
       { key: "businessPlan", num: 1, label: "Business Plan (Value proposition, Market potential, Industry attractiveness, Potential social and strategic national impact and ethical)" },
