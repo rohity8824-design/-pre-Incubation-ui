@@ -80,7 +80,14 @@ export default function App() {
   const [viewingStartup, setViewingStartup] = useState(null);
   const [pitchingStartup, setPitchingStartup] = useState(null);
   const [pitchForm, setPitchForm] = useState({ pitch_date: "", pitch_time: "", pitch_link: "" });
-
+  const [evaluatingStartup, setEvaluatingStartup] = useState(null);
+  const [evalForm, setEvalForm] = useState({
+  founderNames: "", date: "",
+  scores: { businessPlan: "", mvp: "", marketResearch: "", innovation: "", investmentStrategy: "", scalability: "", technicalFeasibility: "", revenueStrategy: "", skillsOfTeam: "" },
+  observations: { businessPlan: "", mvp: "", marketResearch: "", innovation: "", investmentStrategy: "", scalability: "", technicalFeasibility: "", revenueStrategy: "", skillsOfTeam: "" },
+  finalRecommendation: "", reasons: "", evaluatorName: "", evaluatorSignature: "",
+});
+const evalPrintRef = useRef(null);
   // --- REFS ---
   const reportRef = useRef(null);
   const modalBodyRef = useRef(null);
@@ -234,6 +241,90 @@ export default function App() {
       alert("Connection error");
     }
   };
+
+  const openEvaluationModal = (startup) => {
+  setEvaluatingStartup(startup);
+  let existing = null;
+  if (startup.evaluation_data) {
+    try { existing = JSON.parse(startup.evaluation_data); } catch (e) { existing = null; }
+  }
+  if (existing) {
+    setEvalForm(existing);
+  } else {
+    setEvalForm({
+      founderNames: startup.founderName || startup.name || "",
+      date: new Date().toISOString().split("T")[0],
+      scores: { businessPlan: "", mvp: "", marketResearch: "", innovation: "", investmentStrategy: "", scalability: "", technicalFeasibility: "", revenueStrategy: "", skillsOfTeam: "" },
+      observations: { businessPlan: "", mvp: "", marketResearch: "", innovation: "", investmentStrategy: "", scalability: "", technicalFeasibility: "", revenueStrategy: "", skillsOfTeam: "" },
+      finalRecommendation: "", reasons: "", evaluatorName: "", evaluatorSignature: "",
+    });
+  }
+};
+
+const handleScoreChange = (param, value) => {
+  setEvalForm({ ...evalForm, scores: { ...evalForm.scores, [param]: value } });
+};
+
+const handleObservationChange = (param, value) => {
+  setEvalForm({ ...evalForm, observations: { ...evalForm.observations, [param]: value } });
+};
+
+const saveEvaluation = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/save-evaluation/${evaluatingStartup.id}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(evalForm),
+    });
+    if (response.ok) {
+      alert("Evaluation saved successfully!");
+      await fetchStartups();
+    } else {
+      alert("Failed to save evaluation");
+    }
+  } catch (error) {
+    alert("Connection error");
+  }
+};
+
+const handleSaveEvaluationPDF = async () => {
+  const element = evalPrintRef.current;
+  if (!element) return;
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    ignoreElements: (el) => el.classList && el.classList.contains('no-print'),
+    onclone: (clonedDoc) => {
+      clonedDoc.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        if (cb.checked) cb.setAttribute('checked', 'checked');
+      });
+      clonedDoc.querySelectorAll('input[type="text"], input[type="date"]').forEach((inp) => {
+        inp.setAttribute('value', inp.value);
+      });
+      clonedDoc.querySelectorAll('textarea').forEach((ta) => {
+        ta.textContent = ta.value;
+      });
+    }
+  });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+  pdf.save(`${evaluatingStartup.startupName || "startup"}_evaluation.pdf`);
+};
 
   const toggleCertificate = async (id) => {
     setActionLoadingId(id);
@@ -825,6 +916,12 @@ export default function App() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </span>
     </button>
+    <button onClick={() => openEvaluationModal(s)} className="big-action-btn evaluate">
+  <span className="btn-label">Evaluate</span>
+  <span className="btn-icon">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+  </span>
+</button>
     <button onClick={() => toggleCertificate(s.id)} className="big-action-btn cert">
       <span className="btn-label">{s.has_certificate ? "Cert ✓" : "No Cert"}</span>
       <span className="btn-icon">
@@ -938,6 +1035,100 @@ export default function App() {
           <p className="full"><strong>Capital Allocations requested: </strong>Quantum Needed: {viewingStartup.fundsRequired} | Specific Milestones Structure: {viewingStartup.fundingRequirements}</p>
         </div>
 
+      </div>
+
+    </div>
+  </div>
+  , document.body
+)}
+{evaluatingStartup && createPortal(
+  <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+    <div className="modal-content" ref={evalPrintRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "85%", maxWidth: "900px", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
+
+      <div className="modal-branding-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #6C5CE7", paddingBottom: "16px", marginBottom: "20px" }}>
+        <img src={`${window.location.origin}/aic-logo.png`} alt="AIC MUJ" style={{ height: "65px", width: "auto", objectFit: "contain" }} />
+        <img src={`${window.location.origin}/manipal-logo.png`} alt="Manipal University Jaipur" style={{ height: "55px", width: "auto", objectFit: "contain" }} />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", alignItems: "center" }}>
+        <h2>Startup Incubation Evaluation</h2>
+        <div className="no-print">
+          <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "8px" }}>Print</button>
+          <button className="btn-print" onClick={handleSaveEvaluationPDF} style={{ marginRight: "8px" }}>Save PDF</button>
+          <button className="btn-print" onClick={saveEvaluation} style={{ marginRight: "8px", background: "#00B894" }}>Save</button>
+          <button className="btn-close" onClick={() => setEvaluatingStartup(null)}>✕</button>
+        </div>
+      </div>
+
+      <div className="view-grid" style={{ marginBottom: "1rem" }}>
+        <p><strong>Startup Name: </strong>{evaluatingStartup.startupName}</p>
+        <p><strong>Founder Names: </strong>
+          <input type="text" value={evalForm.founderNames} onChange={(e) => setEvalForm({...evalForm, founderNames: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+        </p>
+        <p><strong>Date: </strong>
+          <input type="date" value={evalForm.date} onChange={(e) => setEvalForm({...evalForm, date: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+        </p>
+      </div>
+
+      <table className="eval-table" style={{ width: "100%", borderCollapse: "collapse", marginBottom: "1.5rem" }}>
+        <thead>
+          <tr style={{ background: "#F1F1F8" }}>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Sr No</th>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "left" }}>Parameters</th>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Poor (1)</th>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Average (2)</th>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Good (3)</th>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Excellent (4)</th>
+            <th style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "left" }}>Observation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            { key: "businessPlan", num: 1, label: "Business Plan (Value proposition, Market potential, Industry attractiveness, Potential social and strategic national impact and ethical)" },
+            { key: "mvp", num: 2, label: "Minimum Viable Product" },
+            { key: "marketResearch", num: 3, label: "Depth and Width of Market Research" },
+            { key: "innovation", num: 4, label: "Innovation / Competitive Advantage" },
+            { key: "investmentStrategy", num: 5, label: "Investment Strategy / Status" },
+            { key: "scalability", num: 6, label: "Scalability" },
+            { key: "technicalFeasibility", num: 7, label: "Technical Feasibility" },
+            { key: "revenueStrategy", num: 8, label: "Revenue Strategy" },
+            { key: "skillsOfTeam", num: 9, label: "Skills of team" },
+          ].map((param) => (
+            <tr key={param.key}>
+              <td style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "center" }}>{param.num}</td>
+              <td style={{ padding: "8px", border: "1px solid #DCDCE7" }}>{param.label}</td>
+              {["1","2","3","4"].map((val) => (
+                <td key={val} style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "center" }}>
+                  <input type="checkbox" checked={evalForm.scores[param.key] === val} onChange={() => handleScoreChange(param.key, val)} style={{ width: "18px", height: "18px", cursor: "pointer" }}/>
+                </td>
+              ))}
+              <td style={{ padding: "8px", border: "1px solid #DCDCE7" }}>
+                <input type="text" value={evalForm.observations[param.key]} onChange={(e) => handleObservationChange(param.key, e.target.value)} style={{ width: "100%", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px" }}/>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <strong>Final Recommendation: </strong>
+        <label style={{ marginLeft: "12px" }}><input type="checkbox" checked={evalForm.finalRecommendation === "Pre-Incubation"} onChange={() => setEvalForm({...evalForm, finalRecommendation: "Pre-Incubation"})}/> Pre-Incubation</label>
+        <label style={{ marginLeft: "12px" }}><input type="checkbox" checked={evalForm.finalRecommendation === "Incubation"} onChange={() => setEvalForm({...evalForm, finalRecommendation: "Incubation"})}/> Incubation</label>
+        <label style={{ marginLeft: "12px" }}><input type="checkbox" checked={evalForm.finalRecommendation === "On Hold"} onChange={() => setEvalForm({...evalForm, finalRecommendation: "On Hold"})}/> On Hold</label>
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <strong>Reasons: </strong>
+        <textarea value={evalForm.reasons} onChange={(e) => setEvalForm({...evalForm, reasons: e.target.value})} style={{ width: "100%", minHeight: "60px", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "8px", marginTop: "6px" }}/>
+      </div>
+
+      <div className="view-grid">
+        <p><strong>Evaluator Name: </strong>
+          <input type="text" value={evalForm.evaluatorName} onChange={(e) => setEvalForm({...evalForm, evaluatorName: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+        </p>
+        <p><strong>Evaluator Signature: </strong>
+          <input type="text" value={evalForm.evaluatorSignature} onChange={(e) => setEvalForm({...evalForm, evaluatorSignature: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+        </p>
       </div>
 
     </div>

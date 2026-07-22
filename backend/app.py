@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import sqlite3
 import smtplib
@@ -41,6 +42,17 @@ SENDER_EMAIL = 'rohity8824@gmail.com'
 SENDER_PASSWORD = 'raucdepbzisshhpx'
 ADMIN_EMAIL = 'rohity8824@gmail.com'
 
+# ===== EVALUATION SHEET: safely add column if it doesn't exist =====
+def ensure_evaluation_column():
+    conn = get_db_connection()
+    try:
+        conn.execute("ALTER TABLE startups ADD COLUMN evaluation_data TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists, ignore
+    conn.close()
+
+ensure_evaluation_column()
 # ======================================
 # ADMIN CREDENTIALS (NEW)
 # ======================================
@@ -472,6 +484,21 @@ def update_pitching(id):
     conn.close()
     return jsonify({"message": "Pitching details updated"}), 200
 
+@app.route('/save-evaluation/<int:id>', methods=['POST'])
+@login_required
+def save_evaluation(id):
+    data = request.json
+    conn = get_db_connection()
+    startup = conn.execute("SELECT * FROM startups WHERE id = ?", (id,)).fetchone()
+    if not startup:
+        conn.close()
+        return jsonify({"error": "Startup not found"}), 404
+
+    evaluation_json = json.dumps(data)
+    conn.execute("UPDATE startups SET evaluation_data = ? WHERE id = ?", (evaluation_json, id))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Evaluation saved successfully"}), 200
 
 @app.route('/update-certificate/<int:id>', methods=['POST'])
 @login_required

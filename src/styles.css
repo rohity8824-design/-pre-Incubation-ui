@@ -494,3 +494,5 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .big-action-btn.approve .btn-icon { background: #16A34A; }
 .big-action-btn.reject  { background: #EF4444; }
 .big-action-btn.reject  .btn-icon { background: #DC2626; }
+.big-action-btn.evaluate { background: #8B5CF6; }
+.big-action-btn.evaluate .btn-icon { background: #7C3AED; }
