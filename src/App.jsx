@@ -802,16 +802,46 @@ export default function App() {
                             background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
                           }}>{s.status || "Pending"}</span>
                         </td>
-                        <td style={{ padding: "12px", display: "flex", gap: "8px", alignItems: "center" }}>
-                          <button onClick={() => setViewingStartup(s)} className="btn-small">View</button>
-                          <button onClick={() => openPitchModal(s)} className="btn-small btn-pitch">Pitch</button>
-                          <button onClick={() => downloadFolder(s.id)} className="btn-small btn-dl">Docs</button>
-                          <button onClick={() => toggleCertificate(s.id)} className="btn-small">
-                            {s.has_certificate ? "✓ Cert" : "No Cert"}
-                          </button>
-                          <button onClick={() => updateStatus(s.id, "Approved")} disabled={actionLoadingId === s.id} className="btn-small approved">Approve</button>
-                          <button onClick={() => updateStatus(s.id, "Rejected")} disabled={actionLoadingId === s.id} className="btn-small rejected">Reject</button>
-                        </td>
+                        <td style={{ padding: "12px" }}>
+  <div className="actions-cell">
+    <button onClick={() => setViewingStartup(s)} className="big-action-btn view">
+      <span className="btn-label">View</span>
+      <span className="btn-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </span>
+    </button>
+    <button onClick={() => openPitchModal(s)} className="big-action-btn pitch">
+      <span className="btn-label">Pitch</span>
+      <span className="btn-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </span>
+    </button>
+    <button onClick={() => downloadFolder(s.id)} className="big-action-btn docs">
+      <span className="btn-label">Docs</span>
+      <span className="btn-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </span>
+    </button>
+    <button onClick={() => toggleCertificate(s.id)} className="big-action-btn cert">
+      <span className="btn-label">{s.has_certificate ? "Cert ✓" : "No Cert"}</span>
+      <span className="btn-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>
+      </span>
+    </button>
+    <button onClick={() => updateStatus(s.id, "Approved")} disabled={actionLoadingId === s.id} className="big-action-btn approve">
+      <span className="btn-label">Approve</span>
+      <span className="btn-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </span>
+    </button>
+    <button onClick={() => updateStatus(s.id, "Rejected")} disabled={actionLoadingId === s.id} className="big-action-btn reject">
+      <span className="btn-label">Reject</span>
+      <span className="btn-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </span>
+    </button>
+  </div>
+</td>
                       </tr>
                     ))}
                   </tbody>

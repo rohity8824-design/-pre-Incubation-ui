@@ -439,3 +439,58 @@ tbody td { padding: 12px; color: var(--text-dark); white-space: nowrap; }
 .pitch-field input{
   padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;
 }
+/* ===== BIG ACTION BUTTONS (View/Pitch/Docs/Cert/Approve/Reject) ===== */
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.big-action-btn {
+  display: inline-flex;
+  align-items: stretch;
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.big-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.22);
+}
+.big-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.big-action-btn .btn-label {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+}
+.big-action-btn .btn-icon {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.15);
+}
+
+.big-action-btn.view    { background: #3B82F6; }
+.big-action-btn.view    .btn-icon { background: #2563EB; }
+.big-action-btn.pitch   { background: #14B8A6; }
+.big-action-btn.pitch   .btn-icon { background: #0D9488; }
+.big-action-btn.docs    { background: #6366F1; }
+.big-action-btn.docs    .btn-icon { background: #4F46E5; }
+.big-action-btn.cert    { background: #F59E0B; }
+.big-action-btn.cert    .btn-icon { background: #D97706; }
+.big-action-btn.approve { background: #22C55E; }
+.big-action-btn.approve .btn-icon { background: #16A34A; }
+.big-action-btn.reject  { background: #EF4444; }
+.big-action-btn.reject  .btn-icon { background: #DC2626; }
