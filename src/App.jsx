@@ -1070,45 +1070,54 @@ const handleSaveEvaluationPDF = async () => {
         </p>
       </div>
 
-      <table className="eval-table" style={{ width: "100%", borderCollapse: "collapse", marginBottom: "1.5rem" }}>
-        <thead>
-          <tr style={{ background: "#F1F1F8" }}>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Sr No</th>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "left" }}>Parameters</th>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Poor (1)</th>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Average (2)</th>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Good (3)</th>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7" }}>Excellent (4)</th>
-            <th style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "left" }}>Observation</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[
-            { key: "businessPlan", num: 1, label: "Business Plan (Value proposition, Market potential, Industry attractiveness, Potential social and strategic national impact and ethical)" },
-            { key: "mvp", num: 2, label: "Minimum Viable Product" },
-            { key: "marketResearch", num: 3, label: "Depth and Width of Market Research" },
-            { key: "innovation", num: 4, label: "Innovation / Competitive Advantage" },
-            { key: "investmentStrategy", num: 5, label: "Investment Strategy / Status" },
-            { key: "scalability", num: 6, label: "Scalability" },
-            { key: "technicalFeasibility", num: 7, label: "Technical Feasibility" },
-            { key: "revenueStrategy", num: 8, label: "Revenue Strategy" },
-            { key: "skillsOfTeam", num: 9, label: "Skills of team" },
-          ].map((param) => (
-            <tr key={param.key}>
-              <td style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "center" }}>{param.num}</td>
-              <td style={{ padding: "8px", border: "1px solid #DCDCE7" }}>{param.label}</td>
-              {["1","2","3","4"].map((val) => (
-                <td key={val} style={{ padding: "8px", border: "1px solid #DCDCE7", textAlign: "center" }}>
-                  <input type="checkbox" checked={evalForm.scores[param.key] === val} onChange={() => handleScoreChange(param.key, val)} style={{ width: "18px", height: "18px", cursor: "pointer" }}/>
-                </td>
-              ))}
-              <td style={{ padding: "8px", border: "1px solid #DCDCE7" }}>
-                <input type="text" value={evalForm.observations[param.key]} onChange={(e) => handleObservationChange(param.key, e.target.value)} style={{ width: "100%", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px" }}/>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <table className="eval-table" style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", marginBottom: "1.5rem" }}>
+  <colgroup>
+    <col style={{ width: "5%" }} />
+    <col style={{ width: "28%" }} />
+    <col style={{ width: "8%" }} />
+    <col style={{ width: "8%" }} />
+    <col style={{ width: "8%" }} />
+    <col style={{ width: "8%" }} />
+    <col style={{ width: "35%" }} />
+  </colgroup>
+  <thead>
+    <tr style={{ background: "#F1F1F8" }}>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "12px" }}>Sr No</th>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "left", fontSize: "12px" }}>Parameters</th>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Poor (1)</th>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Average (2)</th>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Good (3)</th>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>Excellent (4)</th>
+      <th style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "left", fontSize: "12px" }}>Observation</th>
+    </tr>
+  </thead>
+  <tbody>
+    {[
+      { key: "businessPlan", num: 1, label: "Business Plan (Value proposition, Market potential, Industry attractiveness, Potential social and strategic national impact and ethical)" },
+      { key: "mvp", num: 2, label: "Minimum Viable Product" },
+      { key: "marketResearch", num: 3, label: "Depth and Width of Market Research" },
+      { key: "innovation", num: 4, label: "Innovation / Competitive Advantage" },
+      { key: "investmentStrategy", num: 5, label: "Investment Strategy / Status" },
+      { key: "scalability", num: 6, label: "Scalability" },
+      { key: "technicalFeasibility", num: 7, label: "Technical Feasibility" },
+      { key: "revenueStrategy", num: 8, label: "Revenue Strategy" },
+      { key: "skillsOfTeam", num: 9, label: "Skills of team" },
+    ].map((param) => (
+      <tr key={param.key}>
+        <td style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "center", fontSize: "12px" }}>{param.num}</td>
+        <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "12px", wordBreak: "break-word", whiteSpace: "normal" }}>{param.label}</td>
+        {["1","2","3","4"].map((val) => (
+          <td key={val} style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "center" }}>
+            <input type="checkbox" checked={evalForm.scores[param.key] === val} onChange={() => handleScoreChange(param.key, val)} style={{ width: "16px", height: "16px", cursor: "pointer" }}/>
+          </td>
+        ))}
+        <td style={{ padding: "6px", border: "1px solid #DCDCE7" }}>
+          <input type="text" value={evalForm.observations[param.key]} onChange={(e) => handleObservationChange(param.key, e.target.value)} style={{ width: "100%", boxSizing: "border-box", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px", fontSize: "12px" }}/>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
       <div style={{ marginBottom: "1rem" }}>
         <strong>Final Recommendation: </strong>
