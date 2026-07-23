@@ -52,7 +52,7 @@ def ensure_evaluation_column():
         pass  # column already exists, ignore
     conn.close()
 
-ensure_evaluation_column()
+
 # ======================================
 # ADMIN CREDENTIALS (NEW)
 # ======================================
@@ -514,6 +514,7 @@ def update_certificate(id):
     conn.commit()
     conn.close()
     return jsonify({"message": f"Certificate {new_status}", "certificate_status": new_status}), 200
+ensure_evaluation_column()
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
