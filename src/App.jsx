@@ -85,6 +85,22 @@ export default function App() {
   const [incubationPPT, setIncubationPPT] = useState(null);
   const [isSubmittingIncubation, setIsSubmittingIncubation] = useState(false);
   const [incubationApplications, setIncubationApplications] = useState([]);
+  const [showIncubationEvalSheet, setShowIncubationEvalSheet] = useState(false);
+  const [incubationEvalId, setIncubationEvalId] = useState(null);
+  const [incubationEvalForm, setIncubationEvalForm] = useState({
+    companyName: "", date: "", evaluatorName: "", industry: "", stage: "", ask: "", briefDescription: "",
+    scores: {
+      targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+      competition: "", revenueModel: "", strategy: "", financialProjections: "",
+      exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+    },
+    comments: {
+      targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+      competition: "", revenueModel: "", strategy: "", financialProjections: "",
+      exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+    },
+    nextSteps: "", nameDesignation: "", evaluatorSignature: "",
+  });
   const [evaluatingStartup, setEvaluatingStartup] = useState(null);
   const [evalForm, setEvalForm] = useState({
     founderNames: "", date: "",
@@ -96,6 +112,7 @@ export default function App() {
   const reportRef = useRef(null);
   const modalBodyRef = useRef(null);
   const printRef = useRef(null);
+  const incubationEvalPrintRef = useRef(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -259,7 +276,25 @@ export default function App() {
       });
       const result = await response.json();
       if (response.ok) {
-        alert(result.message);
+        setIncubationEvalForm({
+          companyName: incubationForm.startupName, date: new Date().toISOString().split("T")[0],
+          evaluatorName: "", industry: incubationForm.sector, stage: incubationForm.incubateeLevel,
+          ask: "", briefDescription: incubationForm.description,
+          scores: {
+            targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+            competition: "", revenueModel: "", strategy: "", financialProjections: "",
+            exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+          },
+          comments: {
+            targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+            competition: "", revenueModel: "", strategy: "", financialProjections: "",
+            exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+          },
+          nextSteps: "", nameDesignation: "", evaluatorSignature: "",
+        });
+        setIncubationEvalId(result.id || null);
+        setShowIncubationEvalSheet(true);
+
         setIncubationForm({
           startupName: "", email: "", mobileNo: "", state: "", city: "",
           sector: "", incubateeLevel: "", typeOfProgram: [], operationalModel: "",
@@ -275,6 +310,67 @@ export default function App() {
     } finally {
       setIsSubmittingIncubation(false);
     }
+  };
+
+  const handleIncubationEvalScoreChange = (param, value) => {
+    setIncubationEvalForm({ ...incubationEvalForm, scores: { ...incubationEvalForm.scores, [param]: value } });
+  };
+
+  const handleIncubationEvalCommentChange = (param, value) => {
+    setIncubationEvalForm({ ...incubationEvalForm, comments: { ...incubationEvalForm.comments, [param]: value } });
+  };
+
+  const getIncubationEvalTotal = () => {
+    return Object.values(incubationEvalForm.scores).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+  };
+
+  const saveIncubationEvaluation = async () => {
+    if (!incubationEvalId) {
+      alert("Evaluation saved locally (no application ID found to link it to).");
+      return;
+    }
+    try {
+      const response = await fetch(`${BASE_URL}/save-incubation-evaluation/${incubationEvalId}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(incubationEvalForm),
+      });
+      if (response.ok) {
+        alert("Evaluation saved successfully!");
+      } else {
+        alert("Failed to save evaluation");
+      }
+    } catch (error) {
+      alert("Connection error");
+    }
+  };
+
+  const handleSaveIncubationEvalPDF = async () => {
+    const element = incubationEvalPrintRef.current;
+    if (!element) return;
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      ignoreElements: (el) => el.classList && el.classList.contains('no-print'),
+    });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save(`${incubationEvalForm.companyName || "evaluation"}_evaluation_sheet.pdf`);
   };
 
   const openPitchModal = (startup) => {
@@ -1370,6 +1466,122 @@ export default function App() {
                 </p>
                 <p><strong>Evaluator Signature: </strong>
                   <input type="text" value={evalForm.evaluatorSignature} onChange={(e) => setEvalForm({...evalForm, evaluatorSignature: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+              </div>
+
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {showIncubationEvalSheet && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" ref={incubationEvalPrintRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "85%", maxWidth: "950px", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
+
+              <div className="modal-branding-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #6C5CE7", paddingBottom: "16px", marginBottom: "20px" }}>
+                <img src={`${window.location.origin}/aic-logo.png`} alt="AIC MUJ" style={{ height: "65px", width: "auto", objectFit: "contain" }} />
+                <img src={`${window.location.origin}/manipal-logo.png`} alt="Manipal University Jaipur" style={{ height: "55px", width: "auto", objectFit: "contain" }} />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", alignItems: "center" }}>
+                <h2>Startup Pitch / Incubation Evaluation Sheet</h2>
+                <div className="no-print">
+                  <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "8px" }}>Print</button>
+                  <button className="btn-print" onClick={handleSaveIncubationEvalPDF} style={{ marginRight: "8px" }}>Save PDF</button>
+                  <button className="btn-print" onClick={saveIncubationEvaluation} style={{ marginRight: "8px", background: "#00B894" }}>Save</button>
+                  <button className="btn-close" onClick={() => setShowIncubationEvalSheet(false)}>✕</button>
+                </div>
+              </div>
+
+              <div className="view-grid" style={{ marginBottom: "1rem" }}>
+                <p><strong>Company Name: </strong>
+                  <input type="text" value={incubationEvalForm.companyName} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, companyName: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p><strong>Date: </strong>
+                  <input type="date" value={incubationEvalForm.date} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, date: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p><strong>Evaluator Name: </strong>
+                  <input type="text" value={incubationEvalForm.evaluatorName} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, evaluatorName: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p><strong>Industry: </strong>
+                  <input type="text" value={incubationEvalForm.industry} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, industry: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p><strong>Stage: </strong>
+                  <input type="text" value={incubationEvalForm.stage} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, stage: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p><strong>Ask (₹): </strong>
+                  <input type="text" value={incubationEvalForm.ask} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, ask: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p className="full"><strong>Brief Description: </strong>
+                  <input type="text" value={incubationEvalForm.briefDescription} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, briefDescription: e.target.value})} style={{ width: "100%", boxSizing: "border-box", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+              </div>
+
+              <table className="eval-table" style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", marginBottom: "1rem" }}>
+                <colgroup>
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "37%" }} />
+                  <col style={{ width: "6%" }} /><col style={{ width: "6%" }} /><col style={{ width: "6%" }} /><col style={{ width: "6%" }} /><col style={{ width: "6%" }} />
+                  <col style={{ width: "15%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "#F1F1F8" }}>
+                    <th style={{ padding: "4px 6px", border: "1px solid #DCDCE7", fontSize: "11px", textAlign: "left" }}>Criteria</th>
+                    <th style={{ padding: "4px 6px", border: "1px solid #DCDCE7", fontSize: "11px", textAlign: "left" }}>Description</th>
+                    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px" }}>1<br/>Low</th>
+                    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px" }}>2</th>
+                    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px" }}>3<br/>Avg</th>
+                    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px" }}>4</th>
+                    <th style={{ padding: "4px 2px", border: "1px solid #DCDCE7", fontSize: "10px" }}>5<br/>High</th>
+                    <th style={{ padding: "4px 6px", border: "1px solid #DCDCE7", fontSize: "11px", textAlign: "left" }}>Comments</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { key: "targetMarket", label: "Target Market", desc: "Addressable market large/growing or high-priced niche. Customer well defined." },
+                    { key: "problemNeed", label: "Problem or Need", desc: "Problem is real; customer has significant pain or unfulfilled needs." },
+                    { key: "solution", label: "Solution", desc: "Better, Faster, Cheaper, Simple vs Complex, Quality, Efficient, Focused." },
+                    { key: "team", label: "Team, Board & Advisors", desc: "Relevant industry knowledge, skills, leadership, key relationships." },
+                    { key: "traction", label: "Traction", desc: "Planned milestones, MVP built, market validation, user/revenue growth." },
+                    { key: "competition", label: "Competition vs Competitive Advantages", desc: "Direct vs indirect competition, barriers to entry, proprietary tech." },
+                    { key: "revenueModel", label: "Revenue Model", desc: "Clear revenue model, sales cycle, ARPU, LTV, recurring or one-time." },
+                    { key: "strategy", label: "Strategy: Key Expenses / Time Efforts", desc: "Marketing strategy, cost to acquire/maintain customers, partnerships." },
+                    { key: "financialProjections", label: "Financial Projections", desc: "Logical, reasonable margins, realistic penetration, shows scalability." },
+                    { key: "exitOpportunity", label: "Exit Opportunity", desc: "Acquirers identified, financial buyer, IPO, short vs long term exit." },
+                    { key: "investmentTerms", label: "Investment Terms", desc: "Reasonable given stage, size of capital raise, prior investments." },
+                    { key: "overallPresentation", label: "Overall Presentation / Q&A", desc: "Clear, convincing, engaging, handled Q&A effectively, honest." },
+                  ].map((c) => (
+                    <tr key={c.key}>
+                      <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "12px", fontWeight: "bold" }}>{c.label}</td>
+                      <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>{c.desc}</td>
+                      {["1","2","3","4","5"].map((val) => (
+                        <td key={val} style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "center" }}>
+                          <input type="checkbox" checked={incubationEvalForm.scores[c.key] === val} onChange={() => handleIncubationEvalScoreChange(c.key, val)} style={{ width: "16px", height: "16px", cursor: "pointer" }}/>
+                        </td>
+                      ))}
+                      <td style={{ padding: "6px", border: "1px solid #DCDCE7" }}>
+                        <input type="text" value={incubationEvalForm.comments[c.key]} onChange={(e) => handleIncubationEvalCommentChange(c.key, e.target.value)} style={{ width: "100%", boxSizing: "border-box", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px", fontSize: "12px" }}/>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{ marginBottom: "1rem", fontWeight: "bold" }}>
+                Total Score: {getIncubationEvalTotal()} / 60
+              </div>
+
+              <div style={{ marginBottom: "1rem" }}>
+                <strong>Next Steps / Advice: </strong>
+                <textarea value={incubationEvalForm.nextSteps} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, nextSteps: e.target.value})} style={{ width: "100%", minHeight: "60px", border: "1px solid #DCDCE7", borderRadius: "4px", padding: "8px", marginTop: "6px" }}/>
+              </div>
+
+              <div className="view-grid">
+                <p><strong>Name & Designation: </strong>
+                  <input type="text" value={incubationEvalForm.nameDesignation} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, nameDesignation: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
+                </p>
+                <p><strong>Evaluator Signature: </strong>
+                  <input type="text" value={incubationEvalForm.evaluatorSignature} onChange={(e) => setIncubationEvalForm({...incubationEvalForm, evaluatorSignature: e.target.value})} style={{ border: "1px solid #DCDCE7", borderRadius: "4px", padding: "4px 8px" }}/>
                 </p>
               </div>
 

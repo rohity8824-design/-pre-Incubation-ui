@@ -59,6 +59,31 @@ def ensure_evaluation_column():
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'changeme123'))
 
+# ===== INCUBATION APPLICATIONS TABLE =====
+def ensure_incubation_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS incubation_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            startupName TEXT, email TEXT, mobileNo TEXT, state TEXT, city TEXT,
+            sector TEXT, incubateeLevel TEXT, typeOfProgram TEXT, operationalModel TEXT,
+            govtProgramme TEXT, msmeRegistered TEXT, dippRegistered TEXT, sdgGoals TEXT,
+            description TEXT, pptFilename TEXT, submitted_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# ===== INCUBATION EVALUATION SHEET: safely add column if it doesn't exist =====
+def ensure_incubation_eval_column():
+    conn = get_db_connection()
+    try:
+        conn.execute("ALTER TABLE incubation_applications ADD COLUMN evaluation_data TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists, ignore
+    conn.close()
+
 def try_sending_email(recipient, subject, html_content):
     try:
         msg = MIMEMultipart()
@@ -515,6 +540,74 @@ def update_certificate(id):
     conn.close()
     return jsonify({"message": f"Certificate {new_status}", "certificate_status": new_status}), 200
 ensure_evaluation_column()
+@app.route('/register-incubation', methods=['POST'])
+def register_incubation():
+    try:
+        data = request.form
+        ppt = request.files.get('pptFile')
+        ppt_filename = ""
+        if ppt:
+            ppt_filename = secure_filename(f"{data.get('startupName','startup')}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{ppt.filename}")
+            ppt_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'incubation_ppts')
+            os.makedirs(ppt_folder, exist_ok=True)
+            ppt.save(os.path.join(ppt_folder, ppt_filename))
+
+        conn = get_db_connection()
+        cursor = conn.execute('''
+            INSERT INTO incubation_applications
+            (startupName, email, mobileNo, state, city, sector, incubateeLevel, typeOfProgram, operationalModel, govtProgramme, msmeRegistered, dippRegistered, sdgGoals, description, pptFilename, submitted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('startupName',''), data.get('email',''), data.get('mobileNo',''),
+            data.get('state',''), data.get('city',''), data.get('sector',''),
+            data.get('incubateeLevel',''), data.get('typeOfProgram',''), data.get('operationalModel',''),
+            data.get('govtProgramme',''), data.get('msmeRegistered',''), data.get('dippRegistered',''),
+            data.get('sdgGoals',''), data.get('description',''), ppt_filename,
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        ))
+        new_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Incubation application submitted successfully!", "id": new_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/incubation-applications', methods=['GET'])
+@login_required
+def get_incubation_applications():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM incubation_applications ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
+@app.route('/download-incubation-ppt/<int:id>', methods=['GET'])
+@login_required
+def download_incubation_ppt(id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM incubation_applications WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    if not row or not row['pptFilename']:
+        return jsonify({"error": "File not found"}), 404
+    ppt_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'incubation_ppts')
+    return send_from_directory(ppt_folder, row['pptFilename'], as_attachment=True)
+
+@app.route('/save-incubation-evaluation/<int:id>', methods=['POST'])
+@login_required
+def save_incubation_evaluation(id):
+    data = request.json
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM incubation_applications WHERE id = ?", (id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Application not found"}), 404
+    evaluation_json = json.dumps(data)
+    conn.execute("UPDATE incubation_applications SET evaluation_data = ? WHERE id = ?", (evaluation_json, id))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Evaluation saved successfully"}), 200
+
+ensure_incubation_table()
+ensure_incubation_eval_column()
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
