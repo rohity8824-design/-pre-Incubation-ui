@@ -274,27 +274,10 @@ export default function App() {
         credentials: "include",
         body: data,
       });
-      const result = await response.json();
+     const result = await response.json();
       if (response.ok) {
-        setIncubationEvalForm({
-          companyName: incubationForm.startupName, date: new Date().toISOString().split("T")[0],
-          evaluatorName: "", industry: incubationForm.sector, stage: incubationForm.incubateeLevel,
-          ask: "", briefDescription: incubationForm.description,
-          scores: {
-            targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
-            competition: "", revenueModel: "", strategy: "", financialProjections: "",
-            exitOpportunity: "", investmentTerms: "", overallPresentation: "",
-          },
-          comments: {
-            targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
-            competition: "", revenueModel: "", strategy: "", financialProjections: "",
-            exitOpportunity: "", investmentTerms: "", overallPresentation: "",
-          },
-          nextSteps: "", nameDesignation: "", evaluatorSignature: "",
-        });
+        alert(result.message);
         setIncubationEvalId(result.id || null);
-        setShowIncubationEvalSheet(true);
-
         setIncubationForm({
           startupName: "", email: "", mobileNo: "", state: "", city: "",
           sector: "", incubateeLevel: "", typeOfProgram: [], operationalModel: "",
@@ -1246,6 +1229,31 @@ export default function App() {
 
             <button className="submit-btn" onClick={handleIncubationSubmit} disabled={isSubmittingIncubation} style={{ opacity: isSubmittingIncubation ? 0.7 : 1 }}>
               {isSubmittingIncubation ? "Submitting..." : "Submit Application"}
+            </button>
+
+            <button
+              className="submit-btn"
+              onClick={() => {
+                setIncubationEvalForm({
+                  companyName: "", date: new Date().toISOString().split("T")[0],
+                  evaluatorName: "", industry: "", stage: "", ask: "", briefDescription: "",
+                  scores: {
+                    targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+                    competition: "", revenueModel: "", strategy: "", financialProjections: "",
+                    exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+                  },
+                  comments: {
+                    targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+                    competition: "", revenueModel: "", strategy: "", financialProjections: "",
+                    exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+                  },
+                  nextSteps: "", nameDesignation: "", evaluatorSignature: "",
+                });
+                setShowIncubationEvalSheet(true);
+              }}
+              style={{ marginLeft: "12px", background: "#6C5CE7" }}
+            >
+              Open Evaluation Sheet
             </button>
 
             {isLoggedIn && (
