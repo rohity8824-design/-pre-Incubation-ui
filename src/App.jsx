@@ -274,7 +274,7 @@ export default function App() {
         credentials: "include",
         body: data,
       });
-     const result = await response.json();
+      const result = await response.json();
       if (response.ok) {
         alert(result.message);
         setIncubationEvalId(result.id || null);
@@ -1559,9 +1559,9 @@ export default function App() {
                     { key: "investmentTerms", label: "Investment Terms", desc: "Reasonable given stage, size of capital raise, prior investments." },
                     { key: "overallPresentation", label: "Overall Presentation / Q&A", desc: "Clear, convincing, engaging, handled Q&A effectively, honest." },
                   ].map((c) => (
-                   <tr key={c.key}>
-                      <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "12px", fontWeight: "bold", whiteSpace: "normal", wordBreak: "break-word", overflow: "hidden" }}>{c.label}</td>
-                      <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px", whiteSpace: "normal", wordBreak: "break-word", overflow: "hidden" }}>{c.desc}</td>
+                    <tr key={c.key}>
+                      <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "12px", fontWeight: "bold" }}>{c.label}</td>
+                      <td style={{ padding: "6px", border: "1px solid #DCDCE7", fontSize: "11px" }}>{c.desc}</td>
                       {["1","2","3","4","5"].map((val) => (
                         <td key={val} style={{ padding: "6px", border: "1px solid #DCDCE7", textAlign: "center" }}>
                           <input type="checkbox" checked={incubationEvalForm.scores[c.key] === val} onChange={() => handleIncubationEvalScoreChange(c.key, val)} style={{ width: "16px", height: "16px", cursor: "pointer" }}/>
