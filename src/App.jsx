@@ -85,6 +85,9 @@ export default function App() {
   const [incubationPPT, setIncubationPPT] = useState(null);
   const [isSubmittingIncubation, setIsSubmittingIncubation] = useState(false);
   const [incubationApplications, setIncubationApplications] = useState([]);
+  const [incubationSearch, setIncubationSearch] = useState("");
+  const [incubationSectorFilter, setIncubationSectorFilter] = useState("");
+  const [incubationLevelFilter, setIncubationLevelFilter] = useState("");
   const [showIncubationEvalSheet, setShowIncubationEvalSheet] = useState(false);
   const [incubationEvalId, setIncubationEvalId] = useState(null);
   const [incubationEvalForm, setIncubationEvalForm] = useState({
@@ -292,6 +295,46 @@ export default function App() {
       alert("Backend Connection Error");
     } finally {
       setIsSubmittingIncubation(false);
+    }
+  };
+
+  const openIncubationEvalModal = (app) => {
+    let existing = null;
+    if (app.evaluation_data) {
+      try { existing = JSON.parse(app.evaluation_data); } catch (e) { existing = null; }
+    }
+    if (existing) {
+      setIncubationEvalForm(existing);
+    } else {
+      setIncubationEvalForm({
+        companyName: app.startupName || "", date: new Date().toISOString().split("T")[0],
+        evaluatorName: "", industry: app.sector || "", stage: app.incubateeLevel || "",
+        ask: "", briefDescription: app.description || "",
+        scores: {
+          targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+          competition: "", revenueModel: "", strategy: "", financialProjections: "",
+          exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+        },
+        comments: {
+          targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+          competition: "", revenueModel: "", strategy: "", financialProjections: "",
+          exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+        },
+        nextSteps: "", nameDesignation: "", evaluatorSignature: "",
+      });
+    }
+    setIncubationEvalId(app.id);
+    setShowIncubationEvalSheet(true);
+  };
+
+  const getIncubationAppScoreDisplay = (app) => {
+    if (!app.evaluation_data) return "—";
+    try {
+      const parsed = JSON.parse(app.evaluation_data);
+      const total = Object.values(parsed.scores || {}).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+      return `${total} / 60`;
+    } catch (e) {
+      return "—";
     }
   };
 
@@ -1259,6 +1302,57 @@ export default function App() {
             {isLoggedIn && (
               <div style={{ marginTop: "2rem" }}>
                 <div className="card-title">Submitted Incubation Applications</div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", margin: "1rem 0" }}>
+                  <input
+                    type="text"
+                    placeholder="Search by startup name or email..."
+                    value={incubationSearch}
+                    onChange={(e) => setIncubationSearch(e.target.value)}
+                    style={{ flex: "1", minWidth: "220px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                  />
+                  <select
+                    value={incubationSectorFilter}
+                    onChange={(e) => setIncubationSectorFilter(e.target.value)}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                  >
+                    <option value="">All Sectors</option>
+                    <option>Agriculture and Allied Fields</option>
+                    <option>AI / ML / Big Data Analytics</option>
+                    <option>Drones</option>
+                    <option>Education</option>
+                    <option>Health and Pharmaceuticals</option>
+                    <option>Metaverse / Immersive Technology</option>
+                    <option>Sustainability / Recycling</option>
+                    <option>Textile & Apparels</option>
+                    <option>Toys & Games</option>
+                    <option>IoT and Information & Communication Technology (ICT)</option>
+                    <option>Manufacturing and Engineering</option>
+                    <option>Other</option>
+                  </select>
+                  <select
+                    value={incubationLevelFilter}
+                    onChange={(e) => setIncubationLevelFilter(e.target.value)}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                  >
+                    <option value="">All Levels</option>
+                    <option>Ideation</option>
+                    <option>Proof of Concept (PoC)</option>
+                    <option>Prototype</option>
+                    <option>Minimum Viable Product (MVP)</option>
+                    <option>Commercialized</option>
+                  </select>
+                  {(incubationSearch || incubationSectorFilter || incubationLevelFilter) && (
+                    <button
+                      onClick={() => { setIncubationSearch(""); setIncubationSectorFilter(""); setIncubationLevelFilter(""); }}
+                      className="btn-small"
+                      style={{ background: "#EFEFEF", color: "#161629", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+
                 <div style={{ overflowX: "auto", width: "100%", marginTop: "1rem" }}>
                   <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                     <thead>
@@ -1270,26 +1364,50 @@ export default function App() {
                         <th style={{ padding: "12px" }}>Level</th>
                         <th style={{ padding: "12px" }}>Submitted</th>
                         <th style={{ padding: "12px" }}>PPT</th>
+                        <th style={{ padding: "12px" }}>Score</th>
+                        <th style={{ padding: "12px" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {incubationApplications.length === 0 ? (
-                        <tr><td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No incubation applications yet.</td></tr>
-                      ) : incubationApplications.map((a) => (
-                        <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
-                          <td style={{ padding: "12px" }}>{a.id}</td>
-                          <td style={{ padding: "12px", fontWeight: "bold" }}>{a.startupName}</td>
-                          <td style={{ padding: "12px" }}>{a.email}</td>
-                          <td style={{ padding: "12px" }}>{a.sector}</td>
-                          <td style={{ padding: "12px" }}>{a.incubateeLevel}</td>
-                          <td style={{ padding: "12px" }}>{a.submitted_at}</td>
-                          <td style={{ padding: "12px" }}>
-                            {a.pptFilename ? (
-                              <a href={`${BASE_URL}/download-incubation-ppt/${a.id}`} target="_blank" rel="noreferrer">Download</a>
-                            ) : "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const filtered = incubationApplications.filter((a) => {
+                          const q = incubationSearch.trim().toLowerCase();
+                          const matchesSearch = q === "" || (a.startupName || "").toLowerCase().includes(q) || (a.email || "").toLowerCase().includes(q);
+                          const matchesSector = incubationSectorFilter === "" || a.sector === incubationSectorFilter;
+                          const matchesLevel = incubationLevelFilter === "" || a.incubateeLevel === incubationLevelFilter;
+                          return matchesSearch && matchesSector && matchesLevel;
+                        });
+                        if (filtered.length === 0) {
+                          return <tr><td colSpan="9" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>
+                            {incubationApplications.length === 0 ? "No incubation applications yet." : "No applications match your search/filters."}
+                          </td></tr>;
+                        }
+                        return filtered.map((a) => (
+                          <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                            <td style={{ padding: "12px" }}>{a.id}</td>
+                            <td style={{ padding: "12px", fontWeight: "bold" }}>{a.startupName}</td>
+                            <td style={{ padding: "12px" }}>{a.email}</td>
+                            <td style={{ padding: "12px" }}>{a.sector}</td>
+                            <td style={{ padding: "12px" }}>{a.incubateeLevel}</td>
+                            <td style={{ padding: "12px" }}>{a.submitted_at}</td>
+                            <td style={{ padding: "12px" }}>
+                              {a.pptFilename ? (
+                                <a href={`${BASE_URL}/download-incubation-ppt/${a.id}`} target="_blank" rel="noreferrer">Download</a>
+                              ) : "—"}
+                            </td>
+                            <td style={{ padding: "12px", fontWeight: "bold" }}>{getIncubationAppScoreDisplay(a)}</td>
+                            <td style={{ padding: "12px" }}>
+                              <button
+                                onClick={() => openIncubationEvalModal(a)}
+                                className="btn-small"
+                                style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                              >
+                                {a.evaluation_data ? "Edit Eval" : "Evaluate"}
+                              </button>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
