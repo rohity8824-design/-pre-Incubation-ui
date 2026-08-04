@@ -84,6 +84,45 @@ def ensure_incubation_eval_column():
         pass  # column already exists, ignore
     conn.close()
 
+# ===== MULTIPLE EVALUATORS: separate table so each evaluator gets their own entry =====
+def ensure_incubation_evaluations_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS incubation_evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            application_id INTEGER NOT NULL,
+            evaluator_name TEXT NOT NULL,
+            evaluation_data TEXT,
+            updated_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# One-time migration: move any old single-evaluation data (saved before multi-evaluator
+# support existed) into the new incubation_evaluations table so it isn't lost.
+def migrate_old_incubation_evaluations():
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT id, evaluation_data FROM incubation_applications WHERE evaluation_data IS NOT NULL AND evaluation_data != ''"
+    ).fetchall()
+    for r in rows:
+        existing_count = conn.execute(
+            "SELECT COUNT(*) as c FROM incubation_evaluations WHERE application_id = ?", (r['id'],)
+        ).fetchone()['c']
+        if existing_count == 0:
+            try:
+                parsed = json.loads(r['evaluation_data'])
+                evaluator_name = (parsed.get('evaluatorName') or '').strip() or 'Unknown Evaluator'
+                conn.execute(
+                    "INSERT INTO incubation_evaluations (application_id, evaluator_name, evaluation_data, updated_at) VALUES (?, ?, ?, ?)",
+                    (r['id'], evaluator_name, r['evaluation_data'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                )
+            except Exception:
+                pass
+    conn.commit()
+    conn.close()
+
 def try_sending_email(recipient, subject, html_content):
     try:
         msg = MIMEMultipart()
@@ -577,8 +616,25 @@ def register_incubation():
 def get_incubation_applications():
     conn = get_db_connection()
     rows = conn.execute("SELECT * FROM incubation_applications ORDER BY id DESC").fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        evals = conn.execute(
+            "SELECT evaluation_data FROM incubation_evaluations WHERE application_id = ?", (d['id'],)
+        ).fetchall()
+        totals = []
+        for e in evals:
+            try:
+                parsed = json.loads(e['evaluation_data'])
+                total = sum(int(v) for v in parsed.get('scores', {}).values() if v)
+                totals.append(total)
+            except Exception:
+                pass
+        d['eval_count'] = len(evals)
+        d['eval_avg'] = round(sum(totals) / len(totals), 1) if totals else None
+        result.append(d)
     conn.close()
-    return jsonify([dict(r) for r in rows]), 200
+    return jsonify(result), 200
 
 @app.route('/download-incubation-ppt/<int:id>', methods=['GET'])
 @login_required
@@ -591,23 +647,56 @@ def download_incubation_ppt(id):
     ppt_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'incubation_ppts')
     return send_from_directory(ppt_folder, row['pptFilename'], as_attachment=True)
 
+@app.route('/incubation-evaluations/<int:app_id>', methods=['GET'])
+@login_required
+def get_incubation_evaluations(app_id):
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT * FROM incubation_evaluations WHERE application_id = ? ORDER BY updated_at DESC", (app_id,)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
 @app.route('/save-incubation-evaluation/<int:id>', methods=['POST'])
 @login_required
 def save_incubation_evaluation(id):
     data = request.json
+    evaluator_name = (data.get('evaluatorName') or '').strip()
+    if not evaluator_name:
+        return jsonify({"error": "Evaluator Name is required to save an evaluation"}), 400
+
     conn = get_db_connection()
-    row = conn.execute("SELECT * FROM incubation_applications WHERE id = ?", (id,)).fetchone()
-    if not row:
+    app_row = conn.execute("SELECT * FROM incubation_applications WHERE id = ?", (id,)).fetchone()
+    if not app_row:
         conn.close()
         return jsonify({"error": "Application not found"}), 404
+
     evaluation_json = json.dumps(data)
-    conn.execute("UPDATE incubation_applications SET evaluation_data = ? WHERE id = ?", (evaluation_json, id))
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    existing = conn.execute(
+        "SELECT id FROM incubation_evaluations WHERE application_id = ? AND evaluator_name = ?",
+        (id, evaluator_name)
+    ).fetchone()
+
+    if existing:
+        conn.execute(
+            "UPDATE incubation_evaluations SET evaluation_data = ?, updated_at = ? WHERE id = ?",
+            (evaluation_json, now, existing['id'])
+        )
+    else:
+        conn.execute(
+            "INSERT INTO incubation_evaluations (application_id, evaluator_name, evaluation_data, updated_at) VALUES (?, ?, ?, ?)",
+            (id, evaluator_name, evaluation_json, now)
+        )
     conn.commit()
     conn.close()
     return jsonify({"message": "Evaluation saved successfully"}), 200
 
 ensure_incubation_table()
 ensure_incubation_eval_column()
+ensure_incubation_evaluations_table()
+migrate_old_incubation_evaluations()
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=True)

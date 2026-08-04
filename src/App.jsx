@@ -89,6 +89,10 @@ export default function App() {
   const [incubationSectorFilter, setIncubationSectorFilter] = useState("");
   const [incubationLevelFilter, setIncubationLevelFilter] = useState("");
   const [showIncubationEvalSheet, setShowIncubationEvalSheet] = useState(false);
+  const [showEvaluatorsListModal, setShowEvaluatorsListModal] = useState(false);
+  const [evaluatorsListApp, setEvaluatorsListApp] = useState(null);
+  const [evaluatorsList, setEvaluatorsList] = useState([]);
+  const [loadingEvaluators, setLoadingEvaluators] = useState(false);
   const [incubationEvalId, setIncubationEvalId] = useState(null);
   const [incubationEvalForm, setIncubationEvalForm] = useState({
     companyName: "", date: "", evaluatorName: "", industry: "", stage: "", ask: "", briefDescription: "",
@@ -298,44 +302,72 @@ export default function App() {
     }
   };
 
-  const openIncubationEvalModal = (app) => {
-    let existing = null;
-    if (app.evaluation_data) {
-      try { existing = JSON.parse(app.evaluation_data); } catch (e) { existing = null; }
+  const blankIncubationEvalForm = (app) => ({
+    companyName: app?.startupName || "", date: new Date().toISOString().split("T")[0],
+    evaluatorName: "", industry: app?.sector || "", stage: app?.incubateeLevel || "",
+    ask: "", briefDescription: app?.description || "",
+    scores: {
+      targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+      competition: "", revenueModel: "", strategy: "", financialProjections: "",
+      exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+    },
+    comments: {
+      targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
+      competition: "", revenueModel: "", strategy: "", financialProjections: "",
+      exitOpportunity: "", investmentTerms: "", overallPresentation: "",
+    },
+    nextSteps: "", nameDesignation: "", evaluatorSignature: "",
+  });
+
+  const fetchEvaluatorsForApp = async (appId) => {
+    setLoadingEvaluators(true);
+    try {
+      const response = await fetch(`${BASE_URL}/incubation-evaluations/${appId}`, { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setEvaluatorsList(data);
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoadingEvaluators(false);
     }
-    if (existing) {
-      setIncubationEvalForm(existing);
-    } else {
-      setIncubationEvalForm({
-        companyName: app.startupName || "", date: new Date().toISOString().split("T")[0],
-        evaluatorName: "", industry: app.sector || "", stage: app.incubateeLevel || "",
-        ask: "", briefDescription: app.description || "",
-        scores: {
-          targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
-          competition: "", revenueModel: "", strategy: "", financialProjections: "",
-          exitOpportunity: "", investmentTerms: "", overallPresentation: "",
-        },
-        comments: {
-          targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
-          competition: "", revenueModel: "", strategy: "", financialProjections: "",
-          exitOpportunity: "", investmentTerms: "", overallPresentation: "",
-        },
-        nextSteps: "", nameDesignation: "", evaluatorSignature: "",
-      });
-    }
-    setIncubationEvalId(app.id);
+  };
+
+  const openEvaluatorsList = async (app) => {
+    setEvaluatorsListApp(app);
+    setShowEvaluatorsListModal(true);
+    await fetchEvaluatorsForApp(app.id);
+  };
+
+  const startNewEvaluation = () => {
+    setIncubationEvalForm(blankIncubationEvalForm(evaluatorsListApp));
+    setIncubationEvalId(evaluatorsListApp.id);
+    setShowEvaluatorsListModal(false);
     setShowIncubationEvalSheet(true);
   };
 
-  const getIncubationAppScoreDisplay = (app) => {
-    if (!app.evaluation_data) return "—";
+  const editEvaluatorEntry = (entry) => {
+    let parsed = null;
+    try { parsed = JSON.parse(entry.evaluation_data); } catch (e) { parsed = null; }
+    setIncubationEvalForm(parsed || blankIncubationEvalForm(evaluatorsListApp));
+    setIncubationEvalId(evaluatorsListApp.id);
+    setShowEvaluatorsListModal(false);
+    setShowIncubationEvalSheet(true);
+  };
+
+  const getEntryScore = (entry) => {
     try {
-      const parsed = JSON.parse(app.evaluation_data);
-      const total = Object.values(parsed.scores || {}).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
-      return `${total} / 60`;
+      const parsed = JSON.parse(entry.evaluation_data);
+      return Object.values(parsed.scores || {}).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
     } catch (e) {
-      return "—";
+      return 0;
     }
+  };
+
+  const getIncubationAppScoreDisplay = (app) => {
+    if (!app.eval_count) return "—";
+    return `${app.eval_avg} / 60 (${app.eval_count})`;
   };
 
   const handleIncubationEvalScoreChange = (param, value) => {
@@ -352,7 +384,11 @@ export default function App() {
 
   const saveIncubationEvaluation = async () => {
     if (!incubationEvalId) {
-      alert("Evaluation saved locally (no application ID found to link it to).");
+      alert("No application linked to this evaluation sheet — open it via the Evaluations button on a specific application.");
+      return;
+    }
+    if (!incubationEvalForm.evaluatorName || !incubationEvalForm.evaluatorName.trim()) {
+      alert("Please enter your name in 'Evaluator Name' before saving — this is how each evaluator's entry is kept separate.");
       return;
     }
     try {
@@ -362,10 +398,12 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(incubationEvalForm),
       });
+      const result = await response.json();
       if (response.ok) {
         alert("Evaluation saved successfully!");
+        if (isLoggedIn) await fetchIncubationApplications();
       } else {
-        alert("Failed to save evaluation");
+        alert(result.error || "Failed to save evaluation");
       }
     } catch (error) {
       alert("Connection error");
@@ -1274,31 +1312,6 @@ export default function App() {
               {isSubmittingIncubation ? "Submitting..." : "Submit Application"}
             </button>
 
-            <button
-              className="submit-btn"
-              onClick={() => {
-                setIncubationEvalForm({
-                  companyName: "", date: new Date().toISOString().split("T")[0],
-                  evaluatorName: "", industry: "", stage: "", ask: "", briefDescription: "",
-                  scores: {
-                    targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
-                    competition: "", revenueModel: "", strategy: "", financialProjections: "",
-                    exitOpportunity: "", investmentTerms: "", overallPresentation: "",
-                  },
-                  comments: {
-                    targetMarket: "", problemNeed: "", solution: "", team: "", traction: "",
-                    competition: "", revenueModel: "", strategy: "", financialProjections: "",
-                    exitOpportunity: "", investmentTerms: "", overallPresentation: "",
-                  },
-                  nextSteps: "", nameDesignation: "", evaluatorSignature: "",
-                });
-                setShowIncubationEvalSheet(true);
-              }}
-              style={{ marginLeft: "12px", background: "#6C5CE7" }}
-            >
-              Open Evaluation Sheet
-            </button>
-
             {isLoggedIn && (
               <div style={{ marginTop: "2rem" }}>
                 <div className="card-title">Submitted Incubation Applications</div>
@@ -1398,11 +1411,11 @@ export default function App() {
                             <td style={{ padding: "12px", fontWeight: "bold" }}>{getIncubationAppScoreDisplay(a)}</td>
                             <td style={{ padding: "12px" }}>
                               <button
-                                onClick={() => openIncubationEvalModal(a)}
+                                onClick={() => openEvaluatorsList(a)}
                                 className="btn-small"
                                 style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
                               >
-                                {a.evaluation_data ? "Edit Eval" : "Evaluate"}
+                                Evaluations {a.eval_count ? `(${a.eval_count})` : ""}
                               </button>
                             </td>
                           </tr>
@@ -1711,6 +1724,47 @@ export default function App() {
                 </p>
               </div>
 
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {showEvaluatorsListModal && evaluatorsListApp && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "550px", maxHeight: "80vh", overflowY: "auto", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <h3 style={{ margin: 0 }}>Evaluations — {evaluatorsListApp.startupName}</h3>
+                <button className="btn-close" onClick={() => setShowEvaluatorsListModal(false)}>✕</button>
+              </div>
+              <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1rem" }}>Each evaluator's score is kept as a separate entry. Click a name to edit it, or add a new evaluation.</p>
+
+              {loadingEvaluators ? (
+                <p style={{ color: "#6B6B85" }}>Loading...</p>
+              ) : evaluatorsList.length === 0 ? (
+                <p style={{ color: "#6B6B85", padding: "12px 0" }}>No evaluations yet for this application.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "1rem" }}>
+                  {evaluatorsList.map((entry) => (
+                    <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 14px" }}>
+                      <div>
+                        <div style={{ fontWeight: "bold" }}>{entry.evaluator_name}</div>
+                        <div style={{ fontSize: "12px", color: "#6B6B85" }}>Score: {getEntryScore(entry)} / 60 · Updated {entry.updated_at}</div>
+                      </div>
+                      <button
+                        onClick={() => editEvaluatorEntry(entry)}
+                        className="btn-small"
+                        style={{ background: "#EFEFEF", color: "#161629", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button onClick={startNewEvaluation} className="submit-btn" style={{ margin: 0, width: "100%" }}>
+                + Add New Evaluation
+              </button>
             </div>
           </div>
           , document.body
