@@ -71,6 +71,9 @@ export default function App() {
   });
 
   const [startups, setStartups] = useState([]);
+  const [startupSearch, setStartupSearch] = useState("");
+  const [startupSectorFilter, setStartupSectorFilter] = useState("");
+  const [startupStatusFilter, setStartupStatusFilter] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [viewingStartup, setViewingStartup] = useState(null);
@@ -90,6 +93,8 @@ export default function App() {
   const [incubationLevelFilter, setIncubationLevelFilter] = useState("");
   const [showIncubationEvalSheet, setShowIncubationEvalSheet] = useState(false);
   const [showEvaluatorsListModal, setShowEvaluatorsListModal] = useState(false);
+  const [showCombinedReport, setShowCombinedReport] = useState(false);
+  const combinedReportPrintRef = useRef(null);
   const [evaluatorsListApp, setEvaluatorsListApp] = useState(null);
   const [evaluatorsList, setEvaluatorsList] = useState([]);
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
@@ -356,6 +361,24 @@ export default function App() {
     setShowIncubationEvalSheet(true);
   };
 
+  const deleteEvaluatorEntry = async (entry) => {
+    if (!window.confirm(`Delete ${entry.evaluator_name}'s evaluation? This cannot be undone.`)) return;
+    try {
+      const response = await fetch(`${BASE_URL}/delete-incubation-evaluation/${entry.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (response.ok) {
+        await fetchEvaluatorsForApp(evaluatorsListApp.id);
+        if (isLoggedIn) await fetchIncubationApplications();
+      } else {
+        alert("Failed to delete evaluation");
+      }
+    } catch (error) {
+      alert("Connection error");
+    }
+  };
+
   const getEntryScore = (entry) => {
     try {
       const parsed = JSON.parse(entry.evaluation_data);
@@ -368,6 +391,54 @@ export default function App() {
   const getIncubationAppScoreDisplay = (app) => {
     if (!app.eval_count) return "—";
     return `${app.eval_avg} / 60 (${app.eval_count})`;
+  };
+
+  const combinedReportCriteria = [
+    { key: "targetMarket", label: "Target Market" },
+    { key: "problemNeed", label: "Problem/Need" },
+    { key: "solution", label: "Solution" },
+    { key: "team", label: "Team" },
+    { key: "traction", label: "Traction" },
+    { key: "competition", label: "Competition" },
+    { key: "revenueModel", label: "Revenue Model" },
+    { key: "strategy", label: "Strategy" },
+    { key: "financialProjections", label: "Financials" },
+    { key: "exitOpportunity", label: "Exit Opp." },
+    { key: "investmentTerms", label: "Inv. Terms" },
+    { key: "overallPresentation", label: "Presentation" },
+  ];
+
+  const getParsedEvaluators = () => {
+    return evaluatorsList.map((entry) => {
+      let parsed = null;
+      try { parsed = JSON.parse(entry.evaluation_data); } catch (e) { parsed = null; }
+      const scores = (parsed && parsed.scores) || {};
+      const total = combinedReportCriteria.reduce((sum, c) => sum + (parseInt(scores[c.key]) || 0), 0);
+      return { evaluatorName: entry.evaluator_name, scores, total, updatedAt: entry.updated_at };
+    });
+  };
+
+  const handleSaveCombinedReportPDF = async () => {
+    const element = combinedReportPrintRef.current;
+    if (!element) return;
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true, ignoreElements: (el) => el.classList && el.classList.contains('no-print') });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("l", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save(`${evaluatorsListApp?.startupName || "startup"}_combined_report.pdf`);
   };
 
   const handleIncubationEvalScoreChange = (param, value) => {
@@ -1078,7 +1149,47 @@ export default function App() {
                   <button type="submit" className="submit-btn" style={{ marginTop: "6px" }}>Login as Admin</button>
                 </form>
               ) : (
-                <div style={{ overflowX: "auto", width: "100%", marginTop: "1rem" }}>
+                <div style={{ width: "100%", marginTop: "1rem" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
+                    <input
+                      type="text"
+                      placeholder="Search by startup name, founder, or email..."
+                      value={startupSearch}
+                      onChange={(e) => setStartupSearch(e.target.value)}
+                      style={{ flex: "1", minWidth: "220px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                    <select
+                      value={startupSectorFilter}
+                      onChange={(e) => setStartupSectorFilter(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    >
+                      <option value="">All Sectors</option>
+                      <option>Agritech</option>
+                      <option>Healthtech</option>
+                      <option>Edtech</option>
+                      <option>Fintech</option>
+                    </select>
+                    <select
+                      value={startupStatusFilter}
+                      onChange={(e) => setStartupStatusFilter(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    >
+                      <option value="">All Status</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                    {(startupSearch || startupSectorFilter || startupStatusFilter) && (
+                      <button
+                        onClick={() => { setStartupSearch(""); setStartupSectorFilter(""); setStartupStatusFilter(""); }}
+                        className="btn-small"
+                        style={{ background: "#EFEFEF", color: "#161629", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ overflowX: "auto", width: "100%" }}>
                   <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                     <thead>
                       <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
@@ -1092,11 +1203,27 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {startups.length === 0 ? (
-                        <tr>
-                          <td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No applications found.</td>
-                        </tr>
-                      ) : startups.map((s) => (
+                      {(() => {
+                        const filteredStartups = startups.filter((s) => {
+                          const q = startupSearch.trim().toLowerCase();
+                          const matchesSearch = q === "" ||
+                            (s.startupName || "").toLowerCase().includes(q) ||
+                            (s.name || "").toLowerCase().includes(q) ||
+                            (s.email || "").toLowerCase().includes(q);
+                          const matchesSector = startupSectorFilter === "" || s.sector === startupSectorFilter;
+                          const matchesStatus = startupStatusFilter === "" || (s.status || "Pending") === startupStatusFilter;
+                          return matchesSearch && matchesSector && matchesStatus;
+                        });
+                        if (filteredStartups.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>
+                                {startups.length === 0 ? "No applications found." : "No applications match your search/filters."}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return filteredStartups.map((s) => (
                         <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
                           <td style={{ padding: "12px" }}>{s.id}</td>
                           <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
@@ -1157,9 +1284,11 @@ export default function App() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        ));
+                      })()}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -1750,21 +1879,103 @@ export default function App() {
                         <div style={{ fontWeight: "bold" }}>{entry.evaluator_name}</div>
                         <div style={{ fontSize: "12px", color: "#6B6B85" }}>Score: {getEntryScore(entry)} / 60 · Updated {entry.updated_at}</div>
                       </div>
-                      <button
-                        onClick={() => editEvaluatorEntry(entry)}
-                        className="btn-small"
-                        style={{ background: "#EFEFEF", color: "#161629", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
-                      >
-                        Edit
-                      </button>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => editEvaluatorEntry(entry)}
+                          className="btn-small"
+                          style={{ background: "#EFEFEF", color: "#161629", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteEvaluatorEntry(entry)}
+                          className="btn-small"
+                          style={{ background: "#FFEBEE", color: "#C62828", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
+              {evaluatorsList.length > 1 && (
+                <button
+                  onClick={() => { setShowEvaluatorsListModal(false); setShowCombinedReport(true); }}
+                  className="btn-print"
+                  style={{ width: "100%", marginBottom: "10px" }}
+                >
+                  View Combined Report ({evaluatorsList.length} evaluators)
+                </button>
+              )}
+
               <button onClick={startNewEvaluation} className="submit-btn" style={{ margin: 0, width: "100%" }}>
                 + Add New Evaluation
               </button>
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {showCombinedReport && evaluatorsListApp && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" ref={combinedReportPrintRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "95%", maxWidth: "1100px", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
+
+              <div className="modal-branding-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #6C5CE7", paddingBottom: "16px", marginBottom: "20px" }}>
+                <img src={`${window.location.origin}/aic-logo.png`} alt="AIC MUJ" style={{ height: "65px", width: "auto", objectFit: "contain" }} />
+                <img src={`${window.location.origin}/manipal-logo.png`} alt="Manipal University Jaipur" style={{ height: "55px", width: "auto", objectFit: "contain" }} />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", alignItems: "center" }}>
+                <h2>Combined Evaluation Report — {evaluatorsListApp.startupName}</h2>
+                <div className="no-print">
+                  <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "8px" }}>Print</button>
+                  <button className="btn-print" onClick={handleSaveCombinedReportPDF} style={{ marginRight: "8px" }}>Save PDF</button>
+                  <button className="btn-close" onClick={() => { setShowCombinedReport(false); setShowEvaluatorsListModal(true); }}>✕</button>
+                </div>
+              </div>
+
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
+                  <thead>
+                    <tr style={{ background: "#F1F1F8" }}>
+                      <th style={{ padding: "8px 6px", border: "1px solid #DCDCE7", fontSize: "11px", textAlign: "left", whiteSpace: "nowrap" }}>Evaluator</th>
+                      {combinedReportCriteria.map((c) => (
+                        <th key={c.key} style={{ padding: "8px 4px", border: "1px solid #DCDCE7", fontSize: "10px", textAlign: "center" }}>{c.label}</th>
+                      ))}
+                      <th style={{ padding: "8px 6px", border: "1px solid #DCDCE7", fontSize: "11px", textAlign: "center", background: "#E9E6FB" }}>Total / 60</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getParsedEvaluators().map((ev, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: "8px 6px", border: "1px solid #DCDCE7", fontSize: "12px", fontWeight: "bold", whiteSpace: "nowrap" }}>{ev.evaluatorName}</td>
+                        {combinedReportCriteria.map((c) => (
+                          <td key={c.key} style={{ padding: "8px 4px", border: "1px solid #DCDCE7", fontSize: "12px", textAlign: "center" }}>{ev.scores[c.key] || "-"}</td>
+                        ))}
+                        <td style={{ padding: "8px 6px", border: "1px solid #DCDCE7", fontSize: "13px", textAlign: "center", fontWeight: "bold", background: "#F8F7FE" }}>{ev.total}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td style={{ padding: "8px 6px", border: "1px solid #DCDCE7", fontSize: "12px", fontWeight: "bold" }}>Average</td>
+                      {combinedReportCriteria.map((c) => {
+                        const evals = getParsedEvaluators();
+                        const vals = evals.map((ev) => parseInt(ev.scores[c.key]) || 0).filter((v, idx) => evals[idx].scores[c.key]);
+                        const avg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : "-";
+                        return <td key={c.key} style={{ padding: "8px 4px", border: "1px solid #DCDCE7", fontSize: "12px", textAlign: "center", fontStyle: "italic" }}>{avg}</td>;
+                      })}
+                      <td style={{ padding: "8px 6px", border: "1px solid #DCDCE7", fontSize: "13px", textAlign: "center", fontWeight: "bold", background: "#F8F7FE" }}>
+                        {(() => {
+                          const evals = getParsedEvaluators();
+                          const avg = evals.length ? (evals.reduce((sum, ev) => sum + ev.total, 0) / evals.length).toFixed(1) : "-";
+                          return avg;
+                        })()}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           , document.body

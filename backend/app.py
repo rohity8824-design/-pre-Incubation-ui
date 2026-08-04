@@ -657,6 +657,19 @@ def get_incubation_evaluations(app_id):
     conn.close()
     return jsonify([dict(r) for r in rows]), 200
 
+@app.route('/delete-incubation-evaluation/<int:eval_id>', methods=['DELETE'])
+@login_required
+def delete_incubation_evaluation(eval_id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM incubation_evaluations WHERE id = ?", (eval_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Evaluation not found"}), 404
+    conn.execute("DELETE FROM incubation_evaluations WHERE id = ?", (eval_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Evaluation deleted"}), 200
+
 @app.route('/save-incubation-evaluation/<int:id>', methods=['POST'])
 @login_required
 def save_incubation_evaluation(id):
