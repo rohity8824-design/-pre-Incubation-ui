@@ -311,18 +311,6 @@ def check_duplicate_incubation():
     conn.close()
     return jsonify({"exists": bool(row)}), 200
 
-# --- PUBLIC PORTFOLIO: approved startups only, no login required ---
-@app.route('/public-approved-startups', methods=['GET'])
-def public_approved_startups():
-    conn = get_db_connection()
-    rows = conn.execute('''
-        SELECT startup_name, sector, startup_stage, value_proposition, website_url
-        FROM startups WHERE status = 'Approved'
-        ORDER BY id DESC
-    ''').fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows]), 200
-
 @app.route('/register', methods=['POST'])
 def register():
     try:

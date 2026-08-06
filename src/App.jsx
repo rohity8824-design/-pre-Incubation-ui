@@ -9,8 +9,6 @@ const BASE_URL = "https://pre-incubation-backend.onrender.com";
 export default function App() {
   // State to check URL parameter: detects ?view=form
   const [isFormOnly, setIsFormOnly] = useState(false);
-  const [isPortfolioView, setIsPortfolioView] = useState(false);
-  const [publicApprovedStartups, setPublicApprovedStartups] = useState([]);
 
   // --- AUTH STATES ---
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -151,13 +149,6 @@ export default function App() {
     if (params.get("view") === "form") {
       setIsFormOnly(true);
       setCheckingAuth(false);
-    } else if (params.get("view") === "portfolio") {
-      setIsPortfolioView(true);
-      setCheckingAuth(false);
-      fetch(`${BASE_URL}/public-approved-startups`)
-        .then((res) => res.json())
-        .then((data) => setPublicApprovedStartups(data))
-        .catch(() => {});
     } else {
       setIsFormOnly(false);
       fetch(`${BASE_URL}/check-auth`, { credentials: "include" })
@@ -842,44 +833,6 @@ export default function App() {
     cumulative += dash;
     return withOffset;
   });
-
-  if (isPortfolioView) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#F7F7FB", padding: "2rem 1rem" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div className="logo-pill" style={{ marginBottom: "1.5rem" }}>
-            <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
-            <span className="logo-divider"></span>
-            <img src="/manipal-logo.png" alt="Manipal University Jaipur" className="logo-manipal"/>
-          </div>
-          <h1 style={{ margin: "0 0 8px 0" }}>AIC MUJ — Incubated Startups</h1>
-          <p style={{ color: "#6B6B85", marginBottom: "2rem" }}>Startups approved through the AIC MUJ Pre-Incubation Program.</p>
-
-          {publicApprovedStartups.length === 0 ? (
-            <p style={{ color: "#6B6B85" }}>No approved startups yet — check back soon.</p>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-              {publicApprovedStartups.map((s, i) => (
-                <div key={i} className="card" style={{ padding: "20px", margin: 0 }}>
-                  <h3 style={{ margin: "0 0 8px 0" }}>{s.startup_name || "Unnamed Startup"}</h3>
-                  {s.sector && <span className="badge-sector">{s.sector}</span>}
-                  {s.startup_stage && <span style={{ marginLeft: "8px", fontSize: "12px", color: "#6B6B85" }}>{s.startup_stage}</span>}
-                  {s.value_proposition && (
-                    <p style={{ fontSize: "13px", color: "#444", marginTop: "10px", lineHeight: "1.5" }}>{s.value_proposition}</p>
-                  )}
-                  {s.website_url && (
-                    <a href={s.website_url} target="_blank" rel="noreferrer" style={{ fontSize: "13px", display: "inline-block", marginTop: "8px" }}>
-                      Visit Website →
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`layout ${isFormOnly ? "form-only-layout" : ""}`}>
