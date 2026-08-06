@@ -290,6 +290,39 @@ def check_auth():
     return jsonify({"logged_in": bool(session.get('logged_in'))}), 200
 
 # --- PUBLIC ROUTE ---
+# --- DUPLICATE EMAIL CHECK (public, used before submit) ---
+@app.route('/check-duplicate/pre-incubation', methods=['GET'])
+def check_duplicate_pre():
+    email = (request.args.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({"exists": False}), 200
+    conn = get_db_connection()
+    row = conn.execute("SELECT id FROM startups WHERE LOWER(email) = ?", (email,)).fetchone()
+    conn.close()
+    return jsonify({"exists": bool(row)}), 200
+
+@app.route('/check-duplicate/incubation', methods=['GET'])
+def check_duplicate_incubation():
+    email = (request.args.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({"exists": False}), 200
+    conn = get_db_connection()
+    row = conn.execute("SELECT id FROM incubation_applications WHERE LOWER(email) = ?", (email,)).fetchone()
+    conn.close()
+    return jsonify({"exists": bool(row)}), 200
+
+# --- PUBLIC PORTFOLIO: approved startups only, no login required ---
+@app.route('/public-approved-startups', methods=['GET'])
+def public_approved_startups():
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT startup_name, sector, startup_stage, value_proposition, website_url
+        FROM startups WHERE status = 'Approved'
+        ORDER BY id DESC
+    ''').fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
 @app.route('/register', methods=['POST'])
 def register():
     try:

@@ -9,6 +9,8 @@ const BASE_URL = "https://pre-incubation-backend.onrender.com";
 export default function App() {
   // State to check URL parameter: detects ?view=form
   const [isFormOnly, setIsFormOnly] = useState(false);
+  const [isPortfolioView, setIsPortfolioView] = useState(false);
+  const [publicApprovedStartups, setPublicApprovedStartups] = useState([]);
 
   // --- AUTH STATES ---
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -69,6 +71,24 @@ export default function App() {
     otherDocument: null,
     passportPhoto: null,
   });
+
+  // Draft auto-save: load any saved draft once on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("preIncubationDraftV1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setFormData((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch (e) {}
+  }, []);
+
+  // Draft auto-save: save formData to localStorage as the person types
+  useEffect(() => {
+    try {
+      localStorage.setItem("preIncubationDraftV1", JSON.stringify(formData));
+    } catch (e) {}
+  }, [formData]);
 
   const [startups, setStartups] = useState([]);
   const [startupSearch, setStartupSearch] = useState("");
@@ -131,6 +151,13 @@ export default function App() {
     if (params.get("view") === "form") {
       setIsFormOnly(true);
       setCheckingAuth(false);
+    } else if (params.get("view") === "portfolio") {
+      setIsPortfolioView(true);
+      setCheckingAuth(false);
+      fetch(`${BASE_URL}/public-approved-startups`)
+        .then((res) => res.json())
+        .then((data) => setPublicApprovedStartups(data))
+        .catch(() => {});
     } else {
       setIsFormOnly(false);
       fetch(`${BASE_URL}/check-auth`, { credentials: "include" })
@@ -269,6 +296,18 @@ export default function App() {
   const handleIncubationSubmit = async (e) => {
     e.preventDefault();
     if (isSubmittingIncubation) return;
+
+    if (incubationForm.email) {
+      try {
+        const dupCheck = await fetch(`${BASE_URL}/check-duplicate/incubation?email=${encodeURIComponent(incubationForm.email)}`);
+        const dupResult = await dupCheck.json();
+        if (dupResult.exists) {
+          const proceed = window.confirm("This email has already submitted an Incubation application. Submit another one anyway?");
+          if (!proceed) return;
+        }
+      } catch (e) {}
+    }
+
     setIsSubmittingIncubation(true);
     try {
       const data = new FormData();
@@ -416,6 +455,57 @@ export default function App() {
       const total = combinedReportCriteria.reduce((sum, c) => sum + (parseInt(scores[c.key]) || 0), 0);
       return { evaluatorName: entry.evaluator_name, scores, total, updatedAt: entry.updated_at };
     });
+  };
+
+  const renderRadarChart = () => {
+    const evals = getParsedEvaluators();
+    if (evals.length === 0) return null;
+
+    const avgScores = combinedReportCriteria.map((c) => {
+      const vals = evals.map((ev) => parseInt(ev.scores[c.key]) || 0).filter((v, idx) => evals[idx].scores[c.key]);
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    });
+
+    const numAxes = combinedReportCriteria.length;
+    const center = 150;
+    const maxRadius = 100;
+    const angleStep = (2 * Math.PI) / numAxes;
+
+    const pointFor = (val, i) => {
+      const angle = -Math.PI / 2 + i * angleStep;
+      const r = (val / 5) * maxRadius;
+      return [center + r * Math.cos(angle), center + r * Math.sin(angle)];
+    };
+
+    const polygonPoints = avgScores.map((val, i) => pointFor(val, i).join(",")).join(" ");
+
+    const rings = [1, 2, 3, 4, 5].map((level) =>
+      combinedReportCriteria.map((c, i) => pointFor(level, i).join(",")).join(" ")
+    );
+
+    const axisLines = combinedReportCriteria.map((c, i) => {
+      const angle = -Math.PI / 2 + i * angleStep;
+      const x2 = center + maxRadius * Math.cos(angle);
+      const y2 = center + maxRadius * Math.sin(angle);
+      const labelX = center + (maxRadius + 26) * Math.cos(angle);
+      const labelY = center + (maxRadius + 26) * Math.sin(angle);
+      return { x2, y2, labelX, labelY, label: c.label };
+    });
+
+    return (
+      <svg width="300" height="300" viewBox="0 0 300 300" style={{ display: "block", margin: "0 auto" }}>
+        {rings.map((ring, i) => (
+          <polygon key={i} points={ring} fill="none" stroke="#E5E5F0" strokeWidth="1" />
+        ))}
+        {axisLines.map((a, i) => (
+          <line key={i} x1={center} y1={center} x2={a.x2} y2={a.y2} stroke="#E5E5F0" strokeWidth="1" />
+        ))}
+        <polygon points={polygonPoints} fill="#6C5CE7" fillOpacity="0.35" stroke="#6C5CE7" strokeWidth="2" />
+        {axisLines.map((a, i) => (
+          <text key={i} x={a.labelX} y={a.labelY} fontSize="8" fill="#686B85" textAnchor="middle" dominantBaseline="middle">{a.label}</text>
+        ))}
+      </svg>
+    );
   };
 
   const handleSaveCombinedReportPDF = async () => {
@@ -676,11 +766,23 @@ export default function App() {
       expectations: "", fundsRequired: "", fundingRequirement: "",
     });
     setFiles({ pitchDeck: null, resume: null, panCard: null, certificate: null, businessPlan: null, otherDocument: null, passportPhoto: null });
+    try { localStorage.removeItem("preIncubationDraftV1"); } catch (e) {}
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (formData.email) {
+      try {
+        const dupCheck = await fetch(`${BASE_URL}/check-duplicate/pre-incubation?email=${encodeURIComponent(formData.email)}`);
+        const dupResult = await dupCheck.json();
+        if (dupResult.exists) {
+          const proceed = window.confirm("This email has already submitted a Pre-Incubation application. Submit another one anyway?");
+          if (!proceed) return;
+        }
+      } catch (e) {}
+    }
 
     setIsSubmitting(true);
     try {
@@ -741,6 +843,44 @@ export default function App() {
     return withOffset;
   });
 
+  if (isPortfolioView) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F7F7FB", padding: "2rem 1rem" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div className="logo-pill" style={{ marginBottom: "1.5rem" }}>
+            <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
+            <span className="logo-divider"></span>
+            <img src="/manipal-logo.png" alt="Manipal University Jaipur" className="logo-manipal"/>
+          </div>
+          <h1 style={{ margin: "0 0 8px 0" }}>AIC MUJ — Incubated Startups</h1>
+          <p style={{ color: "#6B6B85", marginBottom: "2rem" }}>Startups approved through the AIC MUJ Pre-Incubation Program.</p>
+
+          {publicApprovedStartups.length === 0 ? (
+            <p style={{ color: "#6B6B85" }}>No approved startups yet — check back soon.</p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+              {publicApprovedStartups.map((s, i) => (
+                <div key={i} className="card" style={{ padding: "20px", margin: 0 }}>
+                  <h3 style={{ margin: "0 0 8px 0" }}>{s.startup_name || "Unnamed Startup"}</h3>
+                  {s.sector && <span className="badge-sector">{s.sector}</span>}
+                  {s.startup_stage && <span style={{ marginLeft: "8px", fontSize: "12px", color: "#6B6B85" }}>{s.startup_stage}</span>}
+                  {s.value_proposition && (
+                    <p style={{ fontSize: "13px", color: "#444", marginTop: "10px", lineHeight: "1.5" }}>{s.value_proposition}</p>
+                  )}
+                  {s.website_url && (
+                    <a href={s.website_url} target="_blank" rel="noreferrer" style={{ fontSize: "13px", display: "inline-block", marginTop: "8px" }}>
+                      Visit Website →
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`layout ${isFormOnly ? "form-only-layout" : ""}`}>
       {!isFormOnly && isLoggedIn && (
@@ -752,6 +892,7 @@ export default function App() {
           <div className="nav-label">Overview</div>
           <div className={`nav-item ${activeView === "preincubation" ? "active" : ""}`} onClick={() => setActiveView("preincubation")}>Pre Incubation</div>
           <div className={`nav-item ${activeView === "incubation" ? "active" : ""}`} onClick={() => { setActiveView("incubation"); if (isLoggedIn) fetchIncubationApplications(); }}>Incubation</div>
+          <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => { setActiveView("leaderboard"); if (isLoggedIn) fetchIncubationApplications(); }}>🏆 Leaderboard</div>
           <div className="nav-item">Startups</div>
           <div className="nav-label">Review</div>
           <div className="nav-item">Pending Review</div>
@@ -1558,6 +1699,84 @@ export default function App() {
           </div>
         )}
 
+        {activeView === "leaderboard" && (
+          <div className="card">
+            <div className="card-title">🏆 Startup Leaderboard</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+              Ranked by average evaluation score across all evaluators.
+            </p>
+
+            {(() => {
+              const ranked = [...incubationApplications]
+                .filter((a) => a.eval_count > 0)
+                .sort((a, b) => b.eval_avg - a.eval_avg);
+              const notEvaluated = incubationApplications.filter((a) => !a.eval_count);
+
+              const rankIcon = (i) => {
+                if (i === 0) return "🥇";
+                if (i === 1) return "🥈";
+                if (i === 2) return "🥉";
+                return `#${i + 1}`;
+              };
+
+              return (
+                <>
+                  {ranked.length === 0 ? (
+                    <p style={{ color: "#6B6B85", padding: "12px 0" }}>No applications have been evaluated yet.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {ranked.map((a, i) => (
+                        <div key={a.id} style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          border: i < 3 ? "2px solid #6C5CE7" : "1px solid #EFEFEF",
+                          borderRadius: "10px", padding: "14px 18px",
+                          background: i < 3 ? "#F8F7FE" : "#FFF"
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <div style={{ fontSize: i < 3 ? "26px" : "16px", fontWeight: "bold", minWidth: "40px", textAlign: "center", color: "#6C5CE7" }}>
+                              {rankIcon(i)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "bold", fontSize: "15px" }}>{a.startupName}</div>
+                              <div style={{ fontSize: "12px", color: "#6B6B85" }}>{a.sector} · {a.incubateeLevel}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontWeight: "bold", fontSize: "16px" }}>{a.eval_avg} / 60</div>
+                              <div style={{ fontSize: "11px", color: "#6B6B85" }}>{a.eval_count} evaluator{a.eval_count > 1 ? "s" : ""}</div>
+                            </div>
+                            <button
+                              onClick={() => openEvaluatorsList(a)}
+                              className="btn-small"
+                              style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                            >
+                              View Profile
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {notEvaluated.length > 0 && (
+                    <div style={{ marginTop: "2rem" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#6B6B85", marginBottom: "8px" }}>Not Yet Evaluated</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {notEvaluated.map((a) => (
+                          <span key={a.id} style={{ background: "#F1F1F8", padding: "6px 12px", borderRadius: "16px", fontSize: "12px", color: "#686B85" }}>
+                            {a.startupName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
+
         {viewingStartup && createPortal(
           <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
             <div className="modal-content" ref={printRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
@@ -1866,6 +2085,13 @@ export default function App() {
                 <button className="btn-close" onClick={() => setShowEvaluatorsListModal(false)}>✕</button>
               </div>
               <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1rem" }}>Each evaluator's score is kept as a separate entry. Click a name to edit it, or add a new evaluation.</p>
+
+              {evaluatorsList.length > 0 && (
+                <div style={{ marginBottom: "1rem" }}>
+                  <div style={{ fontSize: "12px", color: "#6B6B85", textAlign: "center", marginBottom: "4px" }}>Average Score Profile</div>
+                  {renderRadarChart()}
+                </div>
+              )}
 
               {loadingEvaluators ? (
                 <p style={{ color: "#6B6B85" }}>Loading...</p>
