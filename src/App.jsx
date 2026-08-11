@@ -116,6 +116,41 @@ export default function App() {
   const [evaluatorsListApp, setEvaluatorsListApp] = useState(null);
   const [evaluatorsList, setEvaluatorsList] = useState([]);
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
+
+  // --- INCUBATED STARTUPS RECORDS: Startup CRM, Founder CRM, Document Repository ---
+  const [startupCrmList, setStartupCrmList] = useState([]);
+  const [founderCrmList, setFounderCrmList] = useState([]);
+  const [documentRepoList, setDocumentRepoList] = useState([]);
+  const [showStartupCrmModal, setShowStartupCrmModal] = useState(false);
+  const [showFounderCrmModal, setShowFounderCrmModal] = useState(false);
+  const [showDocumentRepoModal, setShowDocumentRepoModal] = useState(false);
+  const [isSavingCrmRecord, setIsSavingCrmRecord] = useState(false);
+
+  const blankStartupCrmForm = {
+    startupId: "", startupName: "", logo: "", founder: "", coFounder: "", email: "",
+    phone: "", website: "", linkedin: "", startupIndiaNumber: "", dpiitNumber: "", cin: "",
+    gst: "", pan: "", sector: "", subSector: "", technology: "", trlLevel: "",
+    incubationStage: "", currentStatus: "", revenue: "", customers: "", employees: "",
+    valuation: "", investmentRaised: "", burnRate: "", runway: "", assignedMentor: "",
+    assignedRm: "", currentMilestone: "", riskScore: "", graduationScore: "", nextReviewDate: "", remarks: "",
+  };
+  const [startupCrmForm, setStartupCrmForm] = useState(blankStartupCrmForm);
+
+  const blankFounderCrmForm = {
+    founderName: "", photo: "", email: "", phone: "", linkedin: "", education: "",
+    experience: "", skills: "", startup: "", coFounder: "", equity: "", pan: "",
+    aadhaar: "", kycStatus: "", meetingHistory: "", mentorshipHistory: "", fundingHistory: "", performanceNotes: "",
+  };
+  const [founderCrmForm, setFounderCrmForm] = useState(blankFounderCrmForm);
+
+  const [documentRepoStartup, setDocumentRepoStartup] = useState("");
+  const blankDocumentRepoFiles = {
+    pitchDeck: null, pan: null, gst: null, mou: null, aoa: null, startupIndia: null,
+    bankStatement: null, ip: null, agreements: null, reports: null, funding: null,
+    investorDeck: null, meetingMinutes: null,
+  };
+  const [documentRepoFiles, setDocumentRepoFiles] = useState(blankDocumentRepoFiles);
+
   const [incubationEvalId, setIncubationEvalId] = useState(null);
   const [incubationEvalForm, setIncubationEvalForm] = useState({
     companyName: "", date: "", evaluatorName: "", industry: "", stage: "", ask: "", briefDescription: "",
@@ -272,6 +307,112 @@ export default function App() {
     }
   };
 
+  // --- INCUBATED STARTUPS RECORDS ---
+  const fetchStartupCrm = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/startup-crm`, { credentials: "include" });
+      if (response.ok) setStartupCrmList(await response.json());
+    } catch (error) { console.log(error); }
+  };
+
+  const fetchFounderCrm = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/founder-crm`, { credentials: "include" });
+      if (response.ok) setFounderCrmList(await response.json());
+    } catch (error) { console.log(error); }
+  };
+
+  const fetchDocumentRepo = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/document-repository`, { credentials: "include" });
+      if (response.ok) setDocumentRepoList(await response.json());
+    } catch (error) { console.log(error); }
+  };
+
+  const fetchAllIncubatedRecords = async () => {
+    await Promise.all([fetchStartupCrm(), fetchFounderCrm(), fetchDocumentRepo()]);
+  };
+
+  const saveStartupCrm = async () => {
+    if (isSavingCrmRecord) return;
+    setIsSavingCrmRecord(true);
+    try {
+      const response = await fetch(`${BASE_URL}/startup-crm`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(startupCrmForm),
+      });
+      if (response.ok) {
+        alert("Startup CRM record saved!");
+        setStartupCrmForm(blankStartupCrmForm);
+        setShowStartupCrmModal(false);
+        await fetchStartupCrm();
+      } else {
+        alert("Failed to save record");
+      }
+    } catch (error) {
+      alert("Connection error");
+    } finally {
+      setIsSavingCrmRecord(false);
+    }
+  };
+
+  const saveFounderCrm = async () => {
+    if (isSavingCrmRecord) return;
+    setIsSavingCrmRecord(true);
+    try {
+      const response = await fetch(`${BASE_URL}/founder-crm`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(founderCrmForm),
+      });
+      if (response.ok) {
+        alert("Founder CRM record saved!");
+        setFounderCrmForm(blankFounderCrmForm);
+        setShowFounderCrmModal(false);
+        await fetchFounderCrm();
+      } else {
+        alert("Failed to save record");
+      }
+    } catch (error) {
+      alert("Connection error");
+    } finally {
+      setIsSavingCrmRecord(false);
+    }
+  };
+
+  const saveDocumentRepo = async () => {
+    if (isSavingCrmRecord) return;
+    if (!documentRepoStartup.trim()) {
+      alert("Please enter the Startup name before saving documents.");
+      return;
+    }
+    setIsSavingCrmRecord(true);
+    try {
+      const data = new FormData();
+      data.append("startup", documentRepoStartup);
+      Object.keys(documentRepoFiles).forEach((key) => {
+        if (documentRepoFiles[key]) data.append(key, documentRepoFiles[key]);
+      });
+      const response = await fetch(`${BASE_URL}/document-repository`, {
+        method: "POST", credentials: "include", body: data,
+      });
+      if (response.ok) {
+        alert("Document set saved!");
+        setDocumentRepoStartup("");
+        setDocumentRepoFiles(blankDocumentRepoFiles);
+        setShowDocumentRepoModal(false);
+        await fetchDocumentRepo();
+      } else {
+        alert("Failed to save documents");
+      }
+    } catch (error) {
+      alert("Connection error");
+    } finally {
+      setIsSavingCrmRecord(false);
+    }
+  };
+
   const handleIncubationChange = (e) => {
     setIncubationForm({ ...incubationForm, [e.target.name]: e.target.value });
   };
@@ -422,6 +563,22 @@ export default function App() {
     if (!app.eval_count) return "—";
     return `${app.eval_avg} / 60 (${app.eval_count})`;
   };
+
+  const documentRepoColumns = [
+    { key: "pitch_deck", label: "Pitch Deck" },
+    { key: "pan", label: "PAN" },
+    { key: "gst", label: "GST" },
+    { key: "mou", label: "MOU" },
+    { key: "aoa", label: "AOA" },
+    { key: "startup_india", label: "Startup India" },
+    { key: "bank_statement", label: "Bank Statement" },
+    { key: "ip", label: "IP" },
+    { key: "agreements", label: "Agreements" },
+    { key: "reports", label: "Reports" },
+    { key: "funding", label: "Funding" },
+    { key: "investor_deck", label: "Investor Deck" },
+    { key: "meeting_minutes", label: "Meeting Minutes" },
+  ];
 
   const combinedReportCriteria = [
     { key: "targetMarket", label: "Target Market" },
@@ -847,6 +1004,9 @@ export default function App() {
           <div className={`nav-item ${activeView === "incubation" ? "active" : ""}`} onClick={() => { setActiveView("incubation"); if (isLoggedIn) fetchIncubationApplications(); }}>Incubation</div>
           <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => { setActiveView("leaderboard"); if (isLoggedIn) fetchIncubationApplications(); }}>🏆 Leaderboard</div>
           <div className="nav-item">Startups</div>
+          <div className="nav-label">Records</div>
+          <div className={`nav-item ${activeView === "incubatedStartups" ? "active" : ""}`} onClick={() => { setActiveView("incubatedStartups"); if (isLoggedIn) fetchAllIncubatedRecords(); }}>Incubated Startups</div>
+          <div className={`nav-item ${activeView === "preIncubatedStartups" ? "active" : ""}`} onClick={() => { setActiveView("preIncubatedStartups"); if (isLoggedIn) fetchStartups(); }}>Pre Incubated Startups</div>
           <div className="nav-label">Review</div>
           <div className="nav-item">Pending Review</div>
           <div className="nav-item">Approved</div>
@@ -1730,6 +1890,154 @@ export default function App() {
           </div>
         )}
 
+        {activeView === "incubatedStartups" && (
+          <div className="card">
+            <div className="card-title">Incubated Startups — Records</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+              Detailed CRM records for startups that have graduated into incubation.
+            </p>
+
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "2rem" }}>
+              <button className="submit-btn" style={{ margin: 0 }} onClick={() => setShowStartupCrmModal(true)}>+ Add to Startup CRM</button>
+              <button className="submit-btn" style={{ margin: 0, background: "#00B894" }} onClick={() => setShowFounderCrmModal(true)}>+ Add to Founder CRM</button>
+              <button className="submit-btn" style={{ margin: 0, background: "#FF6B35" }} onClick={() => setShowDocumentRepoModal(true)}>+ Add to Document Repository</button>
+            </div>
+
+            <h3 style={{ marginBottom: "10px" }}>Startup CRM</h3>
+            <div style={{ overflowX: "auto", marginBottom: "2.5rem" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Startup Name</th>
+                    <th style={{ padding: "12px" }}>Founder</th>
+                    <th style={{ padding: "12px" }}>Sector</th>
+                    <th style={{ padding: "12px" }}>Stage</th>
+                    <th style={{ padding: "12px" }}>Status</th>
+                    <th style={{ padding: "12px" }}>Mentor</th>
+                    <th style={{ padding: "12px" }}>Graduation Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {startupCrmList.length === 0 ? (
+                    <tr><td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startup CRM records yet.</td></tr>
+                  ) : startupCrmList.map((s) => (
+                    <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startup_name}</td>
+                      <td style={{ padding: "12px" }}>{s.founder}</td>
+                      <td style={{ padding: "12px" }}>{s.sector}</td>
+                      <td style={{ padding: "12px" }}>{s.incubation_stage}</td>
+                      <td style={{ padding: "12px" }}>{s.current_status}</td>
+                      <td style={{ padding: "12px" }}>{s.assigned_mentor}</td>
+                      <td style={{ padding: "12px" }}>{s.graduation_score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style={{ marginBottom: "10px" }}>Founder CRM</h3>
+            <div style={{ overflowX: "auto", marginBottom: "2.5rem" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Founder Name</th>
+                    <th style={{ padding: "12px" }}>Startup</th>
+                    <th style={{ padding: "12px" }}>Email</th>
+                    <th style={{ padding: "12px" }}>Phone</th>
+                    <th style={{ padding: "12px" }}>Equity</th>
+                    <th style={{ padding: "12px" }}>KYC Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {founderCrmList.length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No founder CRM records yet.</td></tr>
+                  ) : founderCrmList.map((f) => (
+                    <tr key={f.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{f.founder_name}</td>
+                      <td style={{ padding: "12px" }}>{f.startup}</td>
+                      <td style={{ padding: "12px" }}>{f.email}</td>
+                      <td style={{ padding: "12px" }}>{f.phone}</td>
+                      <td style={{ padding: "12px" }}>{f.equity}</td>
+                      <td style={{ padding: "12px" }}>{f.kyc_status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style={{ marginBottom: "10px" }}>Document Repository</h3>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Startup</th>
+                    {documentRepoColumns.map((c) => (
+                      <th key={c.key} style={{ padding: "12px", whiteSpace: "nowrap" }}>{c.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {documentRepoList.length === 0 ? (
+                    <tr><td colSpan={documentRepoColumns.length + 1} style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No documents uploaded yet.</td></tr>
+                  ) : documentRepoList.map((d) => (
+                    <tr key={d.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{d.startup}</td>
+                      {documentRepoColumns.map((c) => (
+                        <td key={c.key} style={{ padding: "12px" }}>
+                          {d[c.key] ? (
+                            <a href={`${BASE_URL}/download-document/${d.id}/${c.key}`} target="_blank" rel="noreferrer">Download</a>
+                          ) : "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeView === "preIncubatedStartups" && (
+          <div className="card">
+            <div className="card-title">Pre Incubated Startups — Records</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+              All applicants currently in the Pre-Incubation pipeline.
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Startup Name</th>
+                    <th style={{ padding: "12px" }}>Founder</th>
+                    <th style={{ padding: "12px" }}>Sector</th>
+                    <th style={{ padding: "12px" }}>Stage</th>
+                    <th style={{ padding: "12px" }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {startups.length === 0 ? (
+                    <tr><td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No pre-incubation applications found.</td></tr>
+                  ) : startups.map((s) => (
+                    <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
+                      <td style={{ padding: "12px" }}>{s.name}</td>
+                      <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
+                      <td style={{ padding: "12px" }}>{s.startupStage}</td>
+                      <td style={{ padding: "12px" }}>
+                        <span style={{
+                          padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
+                          color: s.status === "Approved" ? "#2E7D32" : s.status === "Rejected" ? "#C62828" : "#F57F17",
+                          background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
+                        }}>{s.status || "Pending"}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {viewingStartup && createPortal(
           <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
             <div className="modal-content" ref={printRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
@@ -2154,6 +2462,117 @@ export default function App() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {showStartupCrmModal && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "800px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ margin: 0 }}>Add to Startup CRM</h2>
+                <button className="btn-close" onClick={() => setShowStartupCrmModal(false)}>✕</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
+                {[
+                  ["startupId", "Startup ID"], ["startupName", "Startup Name"], ["logo", "Logo"],
+                  ["founder", "Founder"], ["coFounder", "Co-Founder"], ["email", "Email"],
+                  ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
+                  ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
+                  ["gst", "GST"], ["pan", "PAN"], ["sector", "Sector"],
+                  ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
+                  ["incubationStage", "Incubation Stage"], ["currentStatus", "Current Status"], ["revenue", "Revenue"],
+                  ["customers", "Customers"], ["employees", "Employees"], ["valuation", "Valuation"],
+                  ["investmentRaised", "Investment Raised"], ["burnRate", "Burn Rate"], ["runway", "Runway"],
+                  ["assignedMentor", "Assigned Mentor"], ["assignedRm", "Assigned RM"], ["currentMilestone", "Current Milestone"],
+                  ["riskScore", "Risk Score"], ["graduationScore", "Graduation Score"], ["nextReviewDate", "Next Review Date"],
+                  ["remarks", "Remarks"],
+                ].map(([key, label]) => (
+                  <div className="form-field" key={key}>
+                    <label>{label}</label>
+                    <input type="text" value={startupCrmForm[key]} onChange={(e) => setStartupCrmForm({ ...startupCrmForm, [key]: e.target.value })} placeholder={`Enter ${label}...`} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
+                <button onClick={() => setShowStartupCrmModal(false)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
+                <button onClick={saveStartupCrm} disabled={isSavingCrmRecord} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>{isSavingCrmRecord ? "Saving..." : "Save Record"}</button>
+              </div>
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {showFounderCrmModal && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "700px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ margin: 0 }}>Add to Founder CRM</h2>
+                <button className="btn-close" onClick={() => setShowFounderCrmModal(false)}>✕</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
+                {[
+                  ["founderName", "Founder Name"], ["photo", "Photo"], ["email", "Email"],
+                  ["phone", "Phone"], ["linkedin", "LinkedIn"], ["education", "Education"],
+                  ["experience", "Experience"], ["skills", "Skills"], ["startup", "Startup"],
+                  ["coFounder", "Co-founder"], ["equity", "Equity"], ["pan", "PAN"],
+                  ["aadhaar", "Aadhaar"], ["kycStatus", "KYC Status"], ["meetingHistory", "Meeting History"],
+                  ["mentorshipHistory", "Mentorship History"], ["fundingHistory", "Funding History"], ["performanceNotes", "Performance Notes"],
+                ].map(([key, label]) => (
+                  <div className="form-field" key={key}>
+                    <label>{label}</label>
+                    <input type="text" value={founderCrmForm[key]} onChange={(e) => setFounderCrmForm({ ...founderCrmForm, [key]: e.target.value })} placeholder={`Enter ${label}...`} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
+                <button onClick={() => setShowFounderCrmModal(false)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
+                <button onClick={saveFounderCrm} disabled={isSavingCrmRecord} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>{isSavingCrmRecord ? "Saving..." : "Save Record"}</button>
+              </div>
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {showDocumentRepoModal && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "720px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ margin: 0 }}>Add to Document Repository</h2>
+                <button className="btn-close" onClick={() => setShowDocumentRepoModal(false)}>✕</button>
+              </div>
+
+              <div className="form-field" style={{ marginBottom: "1.5rem" }}>
+                <label>Startup</label>
+                <input type="text" value={documentRepoStartup} onChange={(e) => setDocumentRepoStartup(e.target.value)} placeholder="Enter Startup name..." />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+                {[
+                  ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "AOA"],
+                  ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
+                  ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
+                  ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
+                ].map(([key, label]) => (
+                  <div key={key} style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "6px" }}>{label}</div>
+                    <input
+                      type="file"
+                      onChange={(e) => setDocumentRepoFiles({ ...documentRepoFiles, [key]: e.target.files[0] })}
+                      style={{ fontSize: "11px", width: "100%" }}
+                    />
+                    {documentRepoFiles[key] && (
+                      <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {documentRepoFiles[key].name}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
+                <button onClick={() => setShowDocumentRepoModal(false)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
+                <button onClick={saveDocumentRepo} disabled={isSavingCrmRecord} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>{isSavingCrmRecord ? "Saving..." : "Save Record"}</button>
               </div>
             </div>
           </div>

@@ -731,6 +731,185 @@ ensure_incubation_table()
 ensure_incubation_eval_column()
 ensure_incubation_evaluations_table()
 migrate_old_incubation_evaluations()
+
+# ======================================
+# INCUBATED STARTUPS RECORDS: Startup CRM, Founder CRM, Document Repository
+# ======================================
+
+def ensure_startup_crm_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS startup_crm (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            startup_id TEXT, startup_name TEXT, logo TEXT, founder TEXT, co_founder TEXT,
+            email TEXT, phone TEXT, website TEXT, linkedin TEXT,
+            startup_india_number TEXT, dpiit_number TEXT, cin TEXT, gst TEXT, pan TEXT,
+            sector TEXT, sub_sector TEXT, technology TEXT, trl_level TEXT,
+            incubation_stage TEXT, current_status TEXT, revenue TEXT, customers TEXT,
+            employees TEXT, valuation TEXT, investment_raised TEXT, burn_rate TEXT, runway TEXT,
+            assigned_mentor TEXT, assigned_rm TEXT, current_milestone TEXT,
+            risk_score TEXT, graduation_score TEXT, next_review_date TEXT, remarks TEXT,
+            created_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def ensure_founder_crm_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS founder_crm (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            founder_name TEXT, photo TEXT, email TEXT, phone TEXT, linkedin TEXT,
+            education TEXT, experience TEXT, skills TEXT, startup TEXT, co_founder TEXT,
+            equity TEXT, pan TEXT, aadhaar TEXT, kyc_status TEXT,
+            meeting_history TEXT, mentorship_history TEXT, funding_history TEXT, performance_notes TEXT,
+            created_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def ensure_document_repository_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS document_repository (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            startup TEXT,
+            pitch_deck TEXT, pan TEXT, gst TEXT, mou TEXT, aoa TEXT,
+            startup_india TEXT, bank_statement TEXT, ip TEXT, agreements TEXT,
+            reports TEXT, funding TEXT, investor_deck TEXT, meeting_minutes TEXT,
+            created_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+STARTUP_CRM_FIELDS = [
+    ("startupId", "startup_id"), ("startupName", "startup_name"), ("logo", "logo"),
+    ("founder", "founder"), ("coFounder", "co_founder"), ("email", "email"),
+    ("phone", "phone"), ("website", "website"), ("linkedin", "linkedin"),
+    ("startupIndiaNumber", "startup_india_number"), ("dpiitNumber", "dpiit_number"),
+    ("cin", "cin"), ("gst", "gst"), ("pan", "pan"), ("sector", "sector"),
+    ("subSector", "sub_sector"), ("technology", "technology"), ("trlLevel", "trl_level"),
+    ("incubationStage", "incubation_stage"), ("currentStatus", "current_status"),
+    ("revenue", "revenue"), ("customers", "customers"), ("employees", "employees"),
+    ("valuation", "valuation"), ("investmentRaised", "investment_raised"),
+    ("burnRate", "burn_rate"), ("runway", "runway"), ("assignedMentor", "assigned_mentor"),
+    ("assignedRm", "assigned_rm"), ("currentMilestone", "current_milestone"),
+    ("riskScore", "risk_score"), ("graduationScore", "graduation_score"),
+    ("nextReviewDate", "next_review_date"), ("remarks", "remarks"),
+]
+
+FOUNDER_CRM_FIELDS = [
+    ("founderName", "founder_name"), ("photo", "photo"), ("email", "email"),
+    ("phone", "phone"), ("linkedin", "linkedin"), ("education", "education"),
+    ("experience", "experience"), ("skills", "skills"), ("startup", "startup"),
+    ("coFounder", "co_founder"), ("equity", "equity"), ("pan", "pan"),
+    ("aadhaar", "aadhaar"), ("kycStatus", "kyc_status"),
+    ("meetingHistory", "meeting_history"), ("mentorshipHistory", "mentorship_history"),
+    ("fundingHistory", "funding_history"), ("performanceNotes", "performance_notes"),
+]
+
+DOCUMENT_REPO_FIELDS = [
+    ("pitchDeck", "pitch_deck"), ("pan", "pan"), ("gst", "gst"), ("mou", "mou"),
+    ("aoa", "aoa"), ("startupIndia", "startup_india"), ("bankStatement", "bank_statement"),
+    ("ip", "ip"), ("agreements", "agreements"), ("reports", "reports"),
+    ("funding", "funding"), ("investorDeck", "investor_deck"), ("meetingMinutes", "meeting_minutes"),
+]
+
+def insert_generic_record(table, fields_map, data):
+    columns = [col for _, col in fields_map] + ["created_at"]
+    values = [data.get(json_key, "") for json_key, _ in fields_map]
+    values.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    placeholders = ",".join(["?"] * len(columns))
+    conn = get_db_connection()
+    conn.execute(f"INSERT INTO {table} ({','.join(columns)}) VALUES ({placeholders})", values)
+    conn.commit()
+    conn.close()
+
+@app.route('/startup-crm', methods=['GET'])
+@login_required
+def get_startup_crm():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM startup_crm ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
+@app.route('/startup-crm', methods=['POST'])
+@login_required
+def add_startup_crm():
+    data = request.json
+    insert_generic_record("startup_crm", STARTUP_CRM_FIELDS, data)
+    return jsonify({"message": "Startup CRM record saved"}), 200
+
+@app.route('/founder-crm', methods=['GET'])
+@login_required
+def get_founder_crm():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM founder_crm ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
+@app.route('/founder-crm', methods=['POST'])
+@login_required
+def add_founder_crm():
+    data = request.json
+    insert_generic_record("founder_crm", FOUNDER_CRM_FIELDS, data)
+    return jsonify({"message": "Founder CRM record saved"}), 200
+
+@app.route('/document-repository', methods=['GET'])
+@login_required
+def get_document_repository():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM document_repository ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
+@app.route('/document-repository', methods=['POST'])
+@login_required
+def add_document_repository():
+    startup = request.form.get('startup', '')
+    doc_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'documents')
+    os.makedirs(doc_folder, exist_ok=True)
+
+    saved = {}
+    for form_key, col in DOCUMENT_REPO_FIELDS:
+        f = request.files.get(form_key)
+        if f and f.filename:
+            fname = secure_filename(f"{startup}_{form_key}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}")
+            f.save(os.path.join(doc_folder, fname))
+            saved[col] = fname
+        else:
+            saved[col] = ""
+
+    columns = ["startup"] + [col for _, col in DOCUMENT_REPO_FIELDS] + ["created_at"]
+    values = [startup] + [saved[col] for _, col in DOCUMENT_REPO_FIELDS] + [datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
+    placeholders = ",".join(["?"] * len(columns))
+    conn = get_db_connection()
+    conn.execute(f"INSERT INTO document_repository ({','.join(columns)}) VALUES ({placeholders})", values)
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Document set saved"}), 200
+
+@app.route('/download-document/<int:id>/<field>', methods=['GET'])
+@login_required
+def download_document(id, field):
+    allowed_fields = [col for _, col in DOCUMENT_REPO_FIELDS]
+    if field not in allowed_fields:
+        return jsonify({"error": "Invalid field"}), 400
+    conn = get_db_connection()
+    row = conn.execute(f"SELECT {field} FROM document_repository WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    if not row or not row[field]:
+        return jsonify({"error": "File not found"}), 404
+    doc_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'documents')
+    return send_from_directory(doc_folder, row[field], as_attachment=True)
+
+ensure_startup_crm_table()
+ensure_founder_crm_table()
+ensure_document_repository_table()
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
