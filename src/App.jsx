@@ -117,33 +117,26 @@ export default function App() {
   const [evaluatorsList, setEvaluatorsList] = useState([]);
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
 
-  // --- INCUBATED STARTUPS RECORDS: Startup CRM, Founder CRM, Document Repository ---
+  // --- INCUBATED STARTUPS RECORDS: one unified form (Startup + Founder + Documents) ---
   const [startupCrmList, setStartupCrmList] = useState([]);
   const [founderCrmList, setFounderCrmList] = useState([]);
   const [documentRepoList, setDocumentRepoList] = useState([]);
-  const [showStartupCrmModal, setShowStartupCrmModal] = useState(false);
-  const [showFounderCrmModal, setShowFounderCrmModal] = useState(false);
-  const [showDocumentRepoModal, setShowDocumentRepoModal] = useState(false);
   const [isSavingCrmRecord, setIsSavingCrmRecord] = useState(false);
 
-  const blankStartupCrmForm = {
+  const blankIncubatedForm = {
+    // Startup details
     startupId: "", startupName: "", logo: "", founder: "", coFounder: "", email: "",
     phone: "", website: "", linkedin: "", startupIndiaNumber: "", dpiitNumber: "", cin: "",
     gst: "", pan: "", sector: "", subSector: "", technology: "", trlLevel: "",
     incubationStage: "", currentStatus: "", revenue: "", customers: "", employees: "",
     valuation: "", investmentRaised: "", burnRate: "", runway: "", assignedMentor: "",
     assignedRm: "", currentMilestone: "", riskScore: "", graduationScore: "", nextReviewDate: "", remarks: "",
+    // Founder-specific extra details
+    photo: "", education: "", experience: "", skills: "", equity: "", aadhaar: "",
+    kycStatus: "", meetingHistory: "", mentorshipHistory: "", fundingHistory: "", performanceNotes: "",
   };
-  const [startupCrmForm, setStartupCrmForm] = useState(blankStartupCrmForm);
+  const [incubatedForm, setIncubatedForm] = useState(blankIncubatedForm);
 
-  const blankFounderCrmForm = {
-    founderName: "", photo: "", email: "", phone: "", linkedin: "", education: "",
-    experience: "", skills: "", startup: "", coFounder: "", equity: "", pan: "",
-    aadhaar: "", kycStatus: "", meetingHistory: "", mentorshipHistory: "", fundingHistory: "", performanceNotes: "",
-  };
-  const [founderCrmForm, setFounderCrmForm] = useState(blankFounderCrmForm);
-
-  const [documentRepoStartup, setDocumentRepoStartup] = useState("");
   const blankDocumentRepoFiles = {
     pitchDeck: null, pan: null, gst: null, mou: null, aoa: null, startupIndia: null,
     bankStatement: null, ip: null, agreements: null, reports: null, funding: null,
@@ -333,81 +326,69 @@ export default function App() {
     await Promise.all([fetchStartupCrm(), fetchFounderCrm(), fetchDocumentRepo()]);
   };
 
-  const saveStartupCrm = async () => {
+  const saveIncubatedRecord = async () => {
     if (isSavingCrmRecord) return;
-    setIsSavingCrmRecord(true);
-    try {
-      const response = await fetch(`${BASE_URL}/startup-crm`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(startupCrmForm),
-      });
-      if (response.ok) {
-        alert("Startup CRM record saved!");
-        setStartupCrmForm(blankStartupCrmForm);
-        setShowStartupCrmModal(false);
-        await fetchStartupCrm();
-      } else {
-        alert("Failed to save record");
-      }
-    } catch (error) {
-      alert("Connection error");
-    } finally {
-      setIsSavingCrmRecord(false);
-    }
-  };
-
-  const saveFounderCrm = async () => {
-    if (isSavingCrmRecord) return;
-    setIsSavingCrmRecord(true);
-    try {
-      const response = await fetch(`${BASE_URL}/founder-crm`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(founderCrmForm),
-      });
-      if (response.ok) {
-        alert("Founder CRM record saved!");
-        setFounderCrmForm(blankFounderCrmForm);
-        setShowFounderCrmModal(false);
-        await fetchFounderCrm();
-      } else {
-        alert("Failed to save record");
-      }
-    } catch (error) {
-      alert("Connection error");
-    } finally {
-      setIsSavingCrmRecord(false);
-    }
-  };
-
-  const saveDocumentRepo = async () => {
-    if (isSavingCrmRecord) return;
-    if (!documentRepoStartup.trim()) {
-      alert("Please enter the Startup name before saving documents.");
+    if (!incubatedForm.startupName.trim()) {
+      alert("Please enter the Startup Name before saving.");
       return;
     }
     setIsSavingCrmRecord(true);
     try {
-      const data = new FormData();
-      data.append("startup", documentRepoStartup);
-      Object.keys(documentRepoFiles).forEach((key) => {
-        if (documentRepoFiles[key]) data.append(key, documentRepoFiles[key]);
+      // Save Startup CRM record
+      await fetch(`${BASE_URL}/startup-crm`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(incubatedForm),
       });
-      const response = await fetch(`${BASE_URL}/document-repository`, {
-        method: "POST", credentials: "include", body: data,
-      });
-      if (response.ok) {
-        alert("Document set saved!");
-        setDocumentRepoStartup("");
-        setDocumentRepoFiles(blankDocumentRepoFiles);
-        setShowDocumentRepoModal(false);
-        await fetchDocumentRepo();
-      } else {
-        alert("Failed to save documents");
+
+      // Save Founder CRM record only if a founder name was entered
+      if (incubatedForm.founder && incubatedForm.founder.trim()) {
+        const founderPayload = {
+          founderName: incubatedForm.founder,
+          photo: incubatedForm.photo,
+          email: incubatedForm.email,
+          phone: incubatedForm.phone,
+          linkedin: incubatedForm.linkedin,
+          education: incubatedForm.education,
+          experience: incubatedForm.experience,
+          skills: incubatedForm.skills,
+          startup: incubatedForm.startupName,
+          coFounder: incubatedForm.coFounder,
+          equity: incubatedForm.equity,
+          pan: incubatedForm.pan,
+          aadhaar: incubatedForm.aadhaar,
+          kycStatus: incubatedForm.kycStatus,
+          meetingHistory: incubatedForm.meetingHistory,
+          mentorshipHistory: incubatedForm.mentorshipHistory,
+          fundingHistory: incubatedForm.fundingHistory,
+          performanceNotes: incubatedForm.performanceNotes,
+        };
+        await fetch(`${BASE_URL}/founder-crm`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(founderPayload),
+        });
       }
+
+      // Save Document Repository record only if at least one file was chosen
+      const hasAnyFile = Object.values(documentRepoFiles).some((f) => f);
+      if (hasAnyFile) {
+        const data = new FormData();
+        data.append("startup", incubatedForm.startupName);
+        Object.keys(documentRepoFiles).forEach((key) => {
+          if (documentRepoFiles[key]) data.append(key, documentRepoFiles[key]);
+        });
+        await fetch(`${BASE_URL}/document-repository`, {
+          method: "POST", credentials: "include", body: data,
+        });
+      }
+
+      alert("Record saved successfully!");
+      setIncubatedForm(blankIncubatedForm);
+      setDocumentRepoFiles(blankDocumentRepoFiles);
+      await fetchAllIncubatedRecords();
     } catch (error) {
-      alert("Connection error");
+      alert("Connection error while saving record");
     } finally {
       setIsSavingCrmRecord(false);
     }
@@ -1894,16 +1875,87 @@ export default function App() {
           <div className="card">
             <div className="card-title">Incubated Startups — Records</div>
             <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
-              Detailed CRM records for startups that have graduated into incubation.
+              Add and manage detailed records for startups that have graduated into incubation.
             </p>
 
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "2rem" }}>
-              <button className="submit-btn" style={{ margin: 0 }} onClick={() => setShowStartupCrmModal(true)}>+ Add to Startup CRM</button>
-              <button className="submit-btn" style={{ margin: 0, background: "#00B894" }} onClick={() => setShowFounderCrmModal(true)}>+ Add to Founder CRM</button>
-              <button className="submit-btn" style={{ margin: 0, background: "#FF6B35" }} onClick={() => setShowDocumentRepoModal(true)}>+ Add to Document Repository</button>
+            <div className="card-head">
+              <div className="num" style={{ background: "#6C5CE7" }}>1</div>
+              <div><h3>Startup Details</h3><p>Core information about the startup</p></div>
+            </div>
+            <div className="form-grid">
+              {[
+                ["startupId", "Startup ID"], ["startupName", "Startup Name"], ["logo", "Logo"],
+                ["founder", "Founder"], ["coFounder", "Co-Founder"], ["email", "Email"],
+                ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
+                ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
+                ["gst", "GST"], ["pan", "PAN"], ["sector", "Sector"],
+                ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
+                ["incubationStage", "Incubation Stage"], ["currentStatus", "Current Status"], ["revenue", "Revenue"],
+                ["customers", "Customers"], ["employees", "Employees"], ["valuation", "Valuation"],
+                ["investmentRaised", "Investment Raised"], ["burnRate", "Burn Rate"], ["runway", "Runway"],
+                ["assignedMentor", "Assigned Mentor"], ["assignedRm", "Assigned RM"], ["currentMilestone", "Current Milestone"],
+                ["riskScore", "Risk Score"], ["graduationScore", "Graduation Score"], ["nextReviewDate", "Next Review Date"],
+                ["remarks", "Remarks"],
+              ].map(([key, label]) => (
+                <div className="form-field" key={key}>
+                  <label>{label}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
+                </div>
+              ))}
             </div>
 
-            <h3 style={{ marginBottom: "10px" }}>Startup CRM</h3>
+            <div className="card-head">
+              <div className="num" style={{ background: "#00B894" }}>2</div>
+              <div><h3>Founder Details</h3><p>Additional details about the founder (optional)</p></div>
+            </div>
+            <div className="form-grid">
+              {[
+                ["photo", "Photo"], ["education", "Education"], ["experience", "Experience"],
+                ["skills", "Skills"], ["equity", "Equity"], ["aadhaar", "Aadhaar"],
+                ["kycStatus", "KYC Status"], ["meetingHistory", "Meeting History"],
+                ["mentorshipHistory", "Mentorship History"], ["fundingHistory", "Funding History"],
+                ["performanceNotes", "Performance Notes"],
+              ].map(([key, label]) => (
+                <div className="form-field" key={key}>
+                  <label>{label}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: "12px", color: "#9797B5", marginTop: "-8px", marginBottom: "1rem" }}>
+              Founder's Name, Co-Founder, Email, Phone, LinkedIn, and PAN are taken from the Startup Details section above.
+            </p>
+
+            <div className="card-head">
+              <div className="num" style={{ background: "#FF6B35" }}>3</div>
+              <div><h3>Documents</h3><p>Upload relevant documents (optional)</p></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "1.5rem" }}>
+              {[
+                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "AOA"],
+                ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
+                ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
+                ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
+              ].map(([key, label]) => (
+                <div key={key} style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 12px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "6px" }}>{label}</div>
+                  <input
+                    type="file"
+                    onChange={(e) => setDocumentRepoFiles({ ...documentRepoFiles, [key]: e.target.files[0] })}
+                    style={{ fontSize: "11px", width: "100%" }}
+                  />
+                  {documentRepoFiles[key] && (
+                    <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {documentRepoFiles[key].name}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button className="submit-btn" onClick={saveIncubatedRecord} disabled={isSavingCrmRecord} style={{ opacity: isSavingCrmRecord ? 0.7 : 1 }}>
+              {isSavingCrmRecord ? "Saving..." : "Save Record"}
+            </button>
+
+            <h3 style={{ marginTop: "2.5rem", marginBottom: "10px" }}>Startup CRM</h3>
             <div style={{ overflowX: "auto", marginBottom: "2.5rem" }}>
               <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead>
@@ -2462,117 +2514,6 @@ export default function App() {
                     </tr>
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-          , document.body
-        )}
-
-        {showStartupCrmModal && createPortal(
-          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "800px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 style={{ margin: 0 }}>Add to Startup CRM</h2>
-                <button className="btn-close" onClick={() => setShowStartupCrmModal(false)}>✕</button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
-                {[
-                  ["startupId", "Startup ID"], ["startupName", "Startup Name"], ["logo", "Logo"],
-                  ["founder", "Founder"], ["coFounder", "Co-Founder"], ["email", "Email"],
-                  ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
-                  ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
-                  ["gst", "GST"], ["pan", "PAN"], ["sector", "Sector"],
-                  ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
-                  ["incubationStage", "Incubation Stage"], ["currentStatus", "Current Status"], ["revenue", "Revenue"],
-                  ["customers", "Customers"], ["employees", "Employees"], ["valuation", "Valuation"],
-                  ["investmentRaised", "Investment Raised"], ["burnRate", "Burn Rate"], ["runway", "Runway"],
-                  ["assignedMentor", "Assigned Mentor"], ["assignedRm", "Assigned RM"], ["currentMilestone", "Current Milestone"],
-                  ["riskScore", "Risk Score"], ["graduationScore", "Graduation Score"], ["nextReviewDate", "Next Review Date"],
-                  ["remarks", "Remarks"],
-                ].map(([key, label]) => (
-                  <div className="form-field" key={key}>
-                    <label>{label}</label>
-                    <input type="text" value={startupCrmForm[key]} onChange={(e) => setStartupCrmForm({ ...startupCrmForm, [key]: e.target.value })} placeholder={`Enter ${label}...`} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
-                <button onClick={() => setShowStartupCrmModal(false)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
-                <button onClick={saveStartupCrm} disabled={isSavingCrmRecord} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>{isSavingCrmRecord ? "Saving..." : "Save Record"}</button>
-              </div>
-            </div>
-          </div>
-          , document.body
-        )}
-
-        {showFounderCrmModal && createPortal(
-          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "700px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 style={{ margin: 0 }}>Add to Founder CRM</h2>
-                <button className="btn-close" onClick={() => setShowFounderCrmModal(false)}>✕</button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
-                {[
-                  ["founderName", "Founder Name"], ["photo", "Photo"], ["email", "Email"],
-                  ["phone", "Phone"], ["linkedin", "LinkedIn"], ["education", "Education"],
-                  ["experience", "Experience"], ["skills", "Skills"], ["startup", "Startup"],
-                  ["coFounder", "Co-founder"], ["equity", "Equity"], ["pan", "PAN"],
-                  ["aadhaar", "Aadhaar"], ["kycStatus", "KYC Status"], ["meetingHistory", "Meeting History"],
-                  ["mentorshipHistory", "Mentorship History"], ["fundingHistory", "Funding History"], ["performanceNotes", "Performance Notes"],
-                ].map(([key, label]) => (
-                  <div className="form-field" key={key}>
-                    <label>{label}</label>
-                    <input type="text" value={founderCrmForm[key]} onChange={(e) => setFounderCrmForm({ ...founderCrmForm, [key]: e.target.value })} placeholder={`Enter ${label}...`} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
-                <button onClick={() => setShowFounderCrmModal(false)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
-                <button onClick={saveFounderCrm} disabled={isSavingCrmRecord} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>{isSavingCrmRecord ? "Saving..." : "Save Record"}</button>
-              </div>
-            </div>
-          </div>
-          , document.body
-        )}
-
-        {showDocumentRepoModal && createPortal(
-          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "720px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 style={{ margin: 0 }}>Add to Document Repository</h2>
-                <button className="btn-close" onClick={() => setShowDocumentRepoModal(false)}>✕</button>
-              </div>
-
-              <div className="form-field" style={{ marginBottom: "1.5rem" }}>
-                <label>Startup</label>
-                <input type="text" value={documentRepoStartup} onChange={(e) => setDocumentRepoStartup(e.target.value)} placeholder="Enter Startup name..." />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
-                {[
-                  ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "AOA"],
-                  ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
-                  ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
-                  ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
-                ].map(([key, label]) => (
-                  <div key={key} style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "6px" }}>{label}</div>
-                    <input
-                      type="file"
-                      onChange={(e) => setDocumentRepoFiles({ ...documentRepoFiles, [key]: e.target.files[0] })}
-                      style={{ fontSize: "11px", width: "100%" }}
-                    />
-                    {documentRepoFiles[key] && (
-                      <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {documentRepoFiles[key].name}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1.5rem" }}>
-                <button onClick={() => setShowDocumentRepoModal(false)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629" }}>Cancel</button>
-                <button onClick={saveDocumentRepo} disabled={isSavingCrmRecord} className="submit-btn" style={{ margin: 0, padding: "6px 16px" }}>{isSavingCrmRecord ? "Saving..." : "Save Record"}</button>
               </div>
             </div>
           </div>
