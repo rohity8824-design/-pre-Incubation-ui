@@ -143,6 +143,8 @@ export default function App() {
     investorDeck: null, meetingMinutes: null,
   };
   const [documentRepoFiles, setDocumentRepoFiles] = useState(blankDocumentRepoFiles);
+  const [viewingStartupCrmRecord, setViewingStartupCrmRecord] = useState(null);
+  const [viewingFounderCrmRecord, setViewingFounderCrmRecord] = useState(null);
 
   const [incubationEvalId, setIncubationEvalId] = useState(null);
   const [incubationEvalForm, setIncubationEvalForm] = useState({
@@ -544,6 +546,31 @@ export default function App() {
     if (!app.eval_count) return "—";
     return `${app.eval_avg} / 60 (${app.eval_count})`;
   };
+
+  const startupCrmLabels = [
+    ["startup_id", "Startup ID"], ["startup_name", "Startup Name"], ["logo", "Logo"],
+    ["founder", "Founder"], ["co_founder", "Co-Founder"], ["email", "Email"],
+    ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
+    ["startup_india_number", "Startup India Number"], ["dpiit_number", "DPIIT Number"], ["cin", "CIN"],
+    ["gst", "GST"], ["pan", "PAN"], ["sector", "Sector"],
+    ["sub_sector", "Sub Sector"], ["technology", "Technology"], ["trl_level", "TRL Level"],
+    ["incubation_stage", "Incubation Stage"], ["current_status", "Current Status"], ["revenue", "Revenue"],
+    ["customers", "Customers"], ["employees", "Employees"], ["valuation", "Valuation"],
+    ["investment_raised", "Investment Raised"], ["burn_rate", "Burn Rate"], ["runway", "Runway"],
+    ["assigned_mentor", "Assigned Mentor"], ["assigned_rm", "Assigned RM"], ["current_milestone", "Current Milestone"],
+    ["risk_score", "Risk Score"], ["graduation_score", "Graduation Score"], ["next_review_date", "Next Review Date"],
+    ["remarks", "Remarks"], ["created_at", "Added On"],
+  ];
+
+  const founderCrmLabels = [
+    ["founder_name", "Founder Name"], ["photo", "Photo"], ["email", "Email"],
+    ["phone", "Phone"], ["linkedin", "LinkedIn"], ["education", "Education"],
+    ["experience", "Experience"], ["skills", "Skills"], ["startup", "Startup"],
+    ["co_founder", "Co-Founder"], ["equity", "Equity"], ["pan", "PAN"],
+    ["aadhaar", "Aadhaar"], ["kyc_status", "KYC Status"], ["meeting_history", "Meeting History"],
+    ["mentorship_history", "Mentorship History"], ["funding_history", "Funding History"],
+    ["performance_notes", "Performance Notes"], ["created_at", "Added On"],
+  ];
 
   const documentRepoColumns = [
     { key: "pitch_deck", label: "Pitch Deck" },
@@ -1967,11 +1994,12 @@ export default function App() {
                     <th style={{ padding: "12px" }}>Status</th>
                     <th style={{ padding: "12px" }}>Mentor</th>
                     <th style={{ padding: "12px" }}>Graduation Score</th>
+                    <th style={{ padding: "12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {startupCrmList.length === 0 ? (
-                    <tr><td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startup CRM records yet.</td></tr>
+                    <tr><td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startup CRM records yet.</td></tr>
                   ) : startupCrmList.map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
                       <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startup_name}</td>
@@ -1981,6 +2009,15 @@ export default function App() {
                       <td style={{ padding: "12px" }}>{s.current_status}</td>
                       <td style={{ padding: "12px" }}>{s.assigned_mentor}</td>
                       <td style={{ padding: "12px" }}>{s.graduation_score}</td>
+                      <td style={{ padding: "12px" }}>
+                        <button
+                          onClick={() => setViewingStartupCrmRecord(s)}
+                          className="btn-small"
+                          style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                        >
+                          View
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1998,11 +2035,12 @@ export default function App() {
                     <th style={{ padding: "12px" }}>Phone</th>
                     <th style={{ padding: "12px" }}>Equity</th>
                     <th style={{ padding: "12px" }}>KYC Status</th>
+                    <th style={{ padding: "12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {founderCrmList.length === 0 ? (
-                    <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No founder CRM records yet.</td></tr>
+                    <tr><td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No founder CRM records yet.</td></tr>
                   ) : founderCrmList.map((f) => (
                     <tr key={f.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
                       <td style={{ padding: "12px", fontWeight: "bold" }}>{f.founder_name}</td>
@@ -2011,6 +2049,15 @@ export default function App() {
                       <td style={{ padding: "12px" }}>{f.phone}</td>
                       <td style={{ padding: "12px" }}>{f.equity}</td>
                       <td style={{ padding: "12px" }}>{f.kyc_status}</td>
+                      <td style={{ padding: "12px" }}>
+                        <button
+                          onClick={() => setViewingFounderCrmRecord(f)}
+                          className="btn-small"
+                          style={{ background: "#00B894", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                        >
+                          View
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2514,6 +2561,40 @@ export default function App() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {viewingStartupCrmRecord && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "700px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ margin: 0 }}>{viewingStartupCrmRecord.startup_name || "Startup CRM Record"}</h2>
+                <button className="btn-close" onClick={() => setViewingStartupCrmRecord(null)}>✕</button>
+              </div>
+              <div className="view-grid">
+                {startupCrmLabels.map(([key, label]) => (
+                  <p key={key}><strong>{label}: </strong>{viewingStartupCrmRecord[key] || "—"}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+          , document.body
+        )}
+
+        {viewingFounderCrmRecord && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "700px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h2 style={{ margin: 0 }}>{viewingFounderCrmRecord.founder_name || "Founder CRM Record"}</h2>
+                <button className="btn-close" onClick={() => setViewingFounderCrmRecord(null)}>✕</button>
+              </div>
+              <div className="view-grid">
+                {founderCrmLabels.map(([key, label]) => (
+                  <p key={key}><strong>{label}: </strong>{viewingFounderCrmRecord[key] || "—"}</p>
+                ))}
               </div>
             </div>
           </div>
