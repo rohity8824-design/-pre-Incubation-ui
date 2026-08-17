@@ -117,34 +117,24 @@ export default function App() {
   const [evaluatorsList, setEvaluatorsList] = useState([]);
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
 
-  // --- INCUBATED STARTUPS RECORDS: one unified form (Startup + Founder + Documents) ---
+  // --- INCUBATED STARTUPS RECORDS: unified Startup Detail form + Documents ---
   const [startupCrmList, setStartupCrmList] = useState([]);
-  const [founderCrmList, setFounderCrmList] = useState([]);
   const [documentRepoList, setDocumentRepoList] = useState([]);
   const [isSavingCrmRecord, setIsSavingCrmRecord] = useState(false);
 
   const blankIncubatedForm = {
-    // Startup details
-    startupId: "", startupName: "", logo: "", founder: "", coFounder: "", email: "",
+    startupId: "", startupName: "", founder: "", coFounder: "", email: "",
     phone: "", website: "", linkedin: "", startupIndiaNumber: "", dpiitNumber: "", cin: "",
-    gst: "", pan: "", sector: "", subSector: "", technology: "", trlLevel: "",
-    incubationStage: "", currentStatus: "", revenue: "", customers: "", employees: "",
-    valuation: "", investmentRaised: "", burnRate: "", runway: "", assignedMentor: "",
-    assignedRm: "", currentMilestone: "", riskScore: "", graduationScore: "", nextReviewDate: "", remarks: "",
-    // Founder-specific extra details
-    photo: "", education: "", experience: "", skills: "", equity: "", aadhaar: "",
-    kycStatus: "", meetingHistory: "", mentorshipHistory: "", fundingHistory: "", performanceNotes: "",
+    pan: "", sector: "", subSector: "", technology: "", trlLevel: "",
+    incubationStage: "", currentStatus: "", revenue: "", valuation: "", investmentRaised: "",
+    assignedMentor: "", assignedRm: "", currentMilestone: "", riskScore: "", nextReviewDate: "", remarks: "",
   };
   const [incubatedForm, setIncubatedForm] = useState(blankIncubatedForm);
+  const [startupPhotoFile, setStartupPhotoFile] = useState(null);
 
-  const blankDocumentRepoFiles = {
-    pitchDeck: null, pan: null, gst: null, mou: null, aoa: null, startupIndia: null,
-    bankStatement: null, ip: null, agreements: null, reports: null, funding: null,
-    investorDeck: null, meetingMinutes: null,
-  };
+  const blankDocumentRepoFiles = { pitchDeck: null, aoa: null };
   const [documentRepoFiles, setDocumentRepoFiles] = useState(blankDocumentRepoFiles);
   const [viewingStartupCrmRecord, setViewingStartupCrmRecord] = useState(null);
-  const [viewingFounderCrmRecord, setViewingFounderCrmRecord] = useState(null);
 
   const [incubationEvalId, setIncubationEvalId] = useState(null);
   const [incubationEvalForm, setIncubationEvalForm] = useState({
@@ -310,13 +300,6 @@ export default function App() {
     } catch (error) { console.log(error); }
   };
 
-  const fetchFounderCrm = async () => {
-    try {
-      const response = await fetch(`${BASE_URL}/founder-crm`, { credentials: "include" });
-      if (response.ok) setFounderCrmList(await response.json());
-    } catch (error) { console.log(error); }
-  };
-
   const fetchDocumentRepo = async () => {
     try {
       const response = await fetch(`${BASE_URL}/document-repository`, { credentials: "include" });
@@ -325,7 +308,7 @@ export default function App() {
   };
 
   const fetchAllIncubatedRecords = async () => {
-    await Promise.all([fetchStartupCrm(), fetchFounderCrm(), fetchDocumentRepo()]);
+    await Promise.all([fetchStartupCrm(), fetchDocumentRepo()]);
   };
 
   const saveIncubatedRecord = async () => {
@@ -336,41 +319,13 @@ export default function App() {
     }
     setIsSavingCrmRecord(true);
     try {
-      // Save Startup CRM record
+      // Save Startup Detail record (multipart, includes optional photo)
+      const startupData = new FormData();
+      Object.keys(incubatedForm).forEach((key) => startupData.append(key, incubatedForm[key]));
+      if (startupPhotoFile) startupData.append("logo", startupPhotoFile);
       await fetch(`${BASE_URL}/startup-crm`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(incubatedForm),
+        method: "POST", credentials: "include", body: startupData,
       });
-
-      // Save Founder CRM record only if a founder name was entered
-      if (incubatedForm.founder && incubatedForm.founder.trim()) {
-        const founderPayload = {
-          founderName: incubatedForm.founder,
-          photo: incubatedForm.photo,
-          email: incubatedForm.email,
-          phone: incubatedForm.phone,
-          linkedin: incubatedForm.linkedin,
-          education: incubatedForm.education,
-          experience: incubatedForm.experience,
-          skills: incubatedForm.skills,
-          startup: incubatedForm.startupName,
-          coFounder: incubatedForm.coFounder,
-          equity: incubatedForm.equity,
-          pan: incubatedForm.pan,
-          aadhaar: incubatedForm.aadhaar,
-          kycStatus: incubatedForm.kycStatus,
-          meetingHistory: incubatedForm.meetingHistory,
-          mentorshipHistory: incubatedForm.mentorshipHistory,
-          fundingHistory: incubatedForm.fundingHistory,
-          performanceNotes: incubatedForm.performanceNotes,
-        };
-        await fetch(`${BASE_URL}/founder-crm`, {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(founderPayload),
-        });
-      }
 
       // Save Document Repository record only if at least one file was chosen
       const hasAnyFile = Object.values(documentRepoFiles).some((f) => f);
@@ -387,6 +342,7 @@ export default function App() {
 
       alert("Record saved successfully!");
       setIncubatedForm(blankIncubatedForm);
+      setStartupPhotoFile(null);
       setDocumentRepoFiles(blankDocumentRepoFiles);
       await fetchAllIncubatedRecords();
     } catch (error) {
@@ -548,45 +504,48 @@ export default function App() {
   };
 
   const startupCrmLabels = [
-    ["startup_id", "Startup ID"], ["startup_name", "Startup Name"], ["logo", "Logo"],
-    ["founder", "Founder"], ["co_founder", "Co-Founder"], ["email", "Email"],
+    ["startup_id", "Startup ID"], ["startup_name", "Startup Name"],
+    ["founder", "Founder Name"], ["co_founder", "Co-Founder Name"], ["email", "Email"],
     ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
     ["startup_india_number", "Startup India Number"], ["dpiit_number", "DPIIT Number"], ["cin", "CIN"],
-    ["gst", "GST"], ["pan", "PAN"], ["sector", "Sector"],
+    ["pan", "PAN"], ["sector", "Sector"],
     ["sub_sector", "Sub Sector"], ["technology", "Technology"], ["trl_level", "TRL Level"],
-    ["incubation_stage", "Incubation Stage"], ["current_status", "Current Status"], ["revenue", "Revenue"],
-    ["customers", "Customers"], ["employees", "Employees"], ["valuation", "Valuation"],
-    ["investment_raised", "Investment Raised"], ["burn_rate", "Burn Rate"], ["runway", "Runway"],
-    ["assigned_mentor", "Assigned Mentor"], ["assigned_rm", "Assigned RM"], ["current_milestone", "Current Milestone"],
-    ["risk_score", "Risk Score"], ["graduation_score", "Graduation Score"], ["next_review_date", "Next Review Date"],
+    ["incubation_stage", "Incubation Stage"], ["current_status", "Number of Employees"], ["revenue", "Revenue"],
+    ["valuation", "Valuation"], ["investment_raised", "Investment Raised"],
+    ["assigned_mentor", "Assigned Mentor"], ["assigned_rm", "Stage"], ["current_milestone", "Success Story"],
+    ["risk_score", "Risk Score"], ["next_review_date", "City / Address"],
     ["remarks", "Remarks"], ["created_at", "Added On"],
-  ];
-
-  const founderCrmLabels = [
-    ["founder_name", "Founder Name"], ["photo", "Photo"], ["email", "Email"],
-    ["phone", "Phone"], ["linkedin", "LinkedIn"], ["education", "Education"],
-    ["experience", "Experience"], ["skills", "Skills"], ["startup", "Startup"],
-    ["co_founder", "Co-Founder"], ["equity", "Equity"], ["pan", "PAN"],
-    ["aadhaar", "Aadhaar"], ["kyc_status", "KYC Status"], ["meeting_history", "Meeting History"],
-    ["mentorship_history", "Mentorship History"], ["funding_history", "Funding History"],
-    ["performance_notes", "Performance Notes"], ["created_at", "Added On"],
   ];
 
   const documentRepoColumns = [
     { key: "pitch_deck", label: "Pitch Deck" },
-    { key: "pan", label: "PAN" },
-    { key: "gst", label: "GST" },
-    { key: "mou", label: "MOU" },
     { key: "aoa", label: "AOA" },
-    { key: "startup_india", label: "Startup India" },
-    { key: "bank_statement", label: "Bank Statement" },
-    { key: "ip", label: "IP" },
-    { key: "agreements", label: "Agreements" },
-    { key: "reports", label: "Reports" },
-    { key: "funding", label: "Funding" },
-    { key: "investor_deck", label: "Investor Deck" },
-    { key: "meeting_minutes", label: "Meeting Minutes" },
   ];
+
+  const exportStartupCrmToExcel = () => {
+    if (startupCrmList.length === 0) {
+      alert("No records to export yet.");
+      return;
+    }
+    const headers = startupCrmLabels.map(([, label]) => label);
+    const keys = startupCrmLabels.map(([key]) => key);
+    const csvRows = [headers.join(",")];
+    startupCrmList.forEach((record) => {
+      const row = keys.map((key) => {
+        const val = (record[key] || "").toString().replace(/"/g, '""');
+        return `"${val}"`;
+      });
+      csvRows.push(row.join(","));
+    });
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `startup_detail_records_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const combinedReportCriteria = [
     { key: "targetMarket", label: "Target Market" },
@@ -1911,37 +1870,51 @@ export default function App() {
             </div>
             <div className="form-grid">
               {[
-                ["startupId", "Startup ID"], ["startupName", "Startup Name"], ["logo", "Logo"],
-                ["founder", "Founder"], ["coFounder", "Co-Founder"], ["email", "Email"],
+                ["startupId", "Startup ID"], ["startupName", "Startup Name"],
+              ].map(([key, label]) => (
+                <div className="form-field" key={key}>
+                  <label>{label}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
+                </div>
+              ))}
+
+              <div className="form-field">
+                <label>Photo</label>
+                <input type="file" accept="image/*" onChange={(e) => setStartupPhotoFile(e.target.files[0])} />
+                {startupPhotoFile && <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {startupPhotoFile.name}</div>}
+              </div>
+
+              {[
+                ["founder", "Founder Name"], ["coFounder", "Co-Founder Name"], ["email", "Email"],
                 ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
                 ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
-                ["gst", "GST"], ["pan", "PAN"], ["sector", "Sector"],
+                ["pan", "PAN"], ["sector", "Sector"],
                 ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
-                ["incubationStage", "Incubation Stage"], ["currentStatus", "Current Status"], ["revenue", "Revenue"],
-                ["customers", "Customers"], ["employees", "Employees"], ["valuation", "Valuation"],
-                ["investmentRaised", "Investment Raised"], ["burnRate", "Burn Rate"], ["runway", "Runway"],
-                ["assignedMentor", "Assigned Mentor"], ["assignedRm", "Assigned RM"], ["currentMilestone", "Current Milestone"],
-                ["riskScore", "Risk Score"], ["graduationScore", "Graduation Score"], ["nextReviewDate", "Next Review Date"],
-                ["remarks", "Remarks"],
+                ["incubationStage", "Incubation Stage"], ["currentStatus", "Number of Employees"], ["revenue", "Revenue"],
+                ["valuation", "Valuation"], ["investmentRaised", "Investment Raised"],
+                ["assignedMentor", "Assigned Mentor"],
               ].map(([key, label]) => (
                 <div className="form-field" key={key}>
                   <label>{label}</label>
                   <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
                 </div>
               ))}
-            </div>
 
-            <div className="card-head">
-              <div className="num" style={{ background: "#00B894" }}>2</div>
-              <div><h3>Founder Details</h3><p>Additional details about the founder (optional)</p></div>
-            </div>
-            <div className="form-grid">
+              <div className="form-field">
+                <label>Stage</label>
+                <select value={incubatedForm.assignedRm} onChange={(e) => setIncubatedForm({ ...incubatedForm, assignedRm: e.target.value })}>
+                  <option value="">Select Stage</option>
+                  <option>Ideation Stage</option>
+                  <option>Pre-Seed Stage</option>
+                  <option>Seed Stage</option>
+                  <option>Early Growth (Series A and B)</option>
+                  <option>Scaling</option>
+                </select>
+              </div>
+
               {[
-                ["photo", "Photo"], ["education", "Education"], ["experience", "Experience"],
-                ["skills", "Skills"], ["equity", "Equity"], ["aadhaar", "Aadhaar"],
-                ["kycStatus", "KYC Status"], ["meetingHistory", "Meeting History"],
-                ["mentorshipHistory", "Mentorship History"], ["fundingHistory", "Funding History"],
-                ["performanceNotes", "Performance Notes"],
+                ["currentMilestone", "Success Story"], ["riskScore", "Risk Score"],
+                ["nextReviewDate", "City / Address"], ["remarks", "Remarks"],
               ].map(([key, label]) => (
                 <div className="form-field" key={key}>
                   <label>{label}</label>
@@ -1949,20 +1922,14 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: "12px", color: "#9797B5", marginTop: "-8px", marginBottom: "1rem" }}>
-              Founder's Name, Co-Founder, Email, Phone, LinkedIn, and PAN are taken from the Startup Details section above.
-            </p>
 
             <div className="card-head">
-              <div className="num" style={{ background: "#FF6B35" }}>3</div>
+              <div className="num" style={{ background: "#FF6B35" }}>2</div>
               <div><h3>Documents</h3><p>Upload relevant documents (optional)</p></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "1.5rem" }}>
               {[
-                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "AOA"],
-                ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
-                ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
-                ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
+                ["pitchDeck", "Pitch Deck"], ["aoa", "AOA"],
               ].map(([key, label]) => (
                 <div key={key} style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "6px" }}>{label}</div>
@@ -1982,7 +1949,16 @@ export default function App() {
               {isSavingCrmRecord ? "Saving..." : "Save Record"}
             </button>
 
-            <h3 style={{ marginTop: "2.5rem", marginBottom: "10px" }}>Startup CRM</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "2.5rem", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0 }}>Startup Detail</h3>
+              <button
+                onClick={exportStartupCrmToExcel}
+                className="btn-small"
+                style={{ background: "#00B894", color: "#FFF", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+              >
+                📊 Export to Excel
+              </button>
+            </div>
             <div style={{ overflowX: "auto", marginBottom: "2.5rem" }}>
               <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead>
@@ -1990,16 +1966,16 @@ export default function App() {
                     <th style={{ padding: "12px" }}>Startup Name</th>
                     <th style={{ padding: "12px" }}>Founder</th>
                     <th style={{ padding: "12px" }}>Sector</th>
-                    <th style={{ padding: "12px" }}>Stage</th>
-                    <th style={{ padding: "12px" }}>Status</th>
+                    <th style={{ padding: "12px" }}>Incubation Stage</th>
+                    <th style={{ padding: "12px" }}>Employees</th>
                     <th style={{ padding: "12px" }}>Mentor</th>
-                    <th style={{ padding: "12px" }}>Graduation Score</th>
+                    <th style={{ padding: "12px" }}>Program Stage</th>
                     <th style={{ padding: "12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {startupCrmList.length === 0 ? (
-                    <tr><td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startup CRM records yet.</td></tr>
+                    <tr><td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startup records yet.</td></tr>
                   ) : startupCrmList.map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
                       <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startup_name}</td>
@@ -2008,52 +1984,12 @@ export default function App() {
                       <td style={{ padding: "12px" }}>{s.incubation_stage}</td>
                       <td style={{ padding: "12px" }}>{s.current_status}</td>
                       <td style={{ padding: "12px" }}>{s.assigned_mentor}</td>
-                      <td style={{ padding: "12px" }}>{s.graduation_score}</td>
+                      <td style={{ padding: "12px" }}>{s.assigned_rm}</td>
                       <td style={{ padding: "12px" }}>
                         <button
                           onClick={() => setViewingStartupCrmRecord(s)}
                           className="btn-small"
                           style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <h3 style={{ marginBottom: "10px" }}>Founder CRM</h3>
-            <div style={{ overflowX: "auto", marginBottom: "2.5rem" }}>
-              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
-                    <th style={{ padding: "12px" }}>Founder Name</th>
-                    <th style={{ padding: "12px" }}>Startup</th>
-                    <th style={{ padding: "12px" }}>Email</th>
-                    <th style={{ padding: "12px" }}>Phone</th>
-                    <th style={{ padding: "12px" }}>Equity</th>
-                    <th style={{ padding: "12px" }}>KYC Status</th>
-                    <th style={{ padding: "12px" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {founderCrmList.length === 0 ? (
-                    <tr><td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No founder CRM records yet.</td></tr>
-                  ) : founderCrmList.map((f) => (
-                    <tr key={f.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
-                      <td style={{ padding: "12px", fontWeight: "bold" }}>{f.founder_name}</td>
-                      <td style={{ padding: "12px" }}>{f.startup}</td>
-                      <td style={{ padding: "12px" }}>{f.email}</td>
-                      <td style={{ padding: "12px" }}>{f.phone}</td>
-                      <td style={{ padding: "12px" }}>{f.equity}</td>
-                      <td style={{ padding: "12px" }}>{f.kyc_status}</td>
-                      <td style={{ padding: "12px" }}>
-                        <button
-                          onClick={() => setViewingFounderCrmRecord(f)}
-                          className="btn-small"
-                          style={{ background: "#00B894", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
                         >
                           View
                         </button>
@@ -2571,29 +2507,18 @@ export default function App() {
           <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
             <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "700px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 style={{ margin: 0 }}>{viewingStartupCrmRecord.startup_name || "Startup CRM Record"}</h2>
+                <h2 style={{ margin: 0 }}>{viewingStartupCrmRecord.startup_name || "Startup Detail Record"}</h2>
                 <button className="btn-close" onClick={() => setViewingStartupCrmRecord(null)}>✕</button>
               </div>
+              {viewingStartupCrmRecord.logo && (
+                <p style={{ marginBottom: "1rem" }}>
+                  <strong>Photo: </strong>
+                  <a href={`${BASE_URL}/download-startup-photo/${viewingStartupCrmRecord.id}`} target="_blank" rel="noreferrer">View Photo</a>
+                </p>
+              )}
               <div className="view-grid">
                 {startupCrmLabels.map(([key, label]) => (
                   <p key={key}><strong>{label}: </strong>{viewingStartupCrmRecord[key] || "—"}</p>
-                ))}
-              </div>
-            </div>
-          </div>
-          , document.body
-        )}
-
-        {viewingFounderCrmRecord && createPortal(
-          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "700px", maxHeight: "85vh", overflowY: "auto", position: "relative" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 style={{ margin: 0 }}>{viewingFounderCrmRecord.founder_name || "Founder CRM Record"}</h2>
-                <button className="btn-close" onClick={() => setViewingFounderCrmRecord(null)}>✕</button>
-              </div>
-              <div className="view-grid">
-                {founderCrmLabels.map(([key, label]) => (
-                  <p key={key}><strong>{label}: </strong>{viewingFounderCrmRecord[key] || "—"}</p>
                 ))}
               </div>
             </div>

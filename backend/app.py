@@ -812,10 +812,7 @@ FOUNDER_CRM_FIELDS = [
 ]
 
 DOCUMENT_REPO_FIELDS = [
-    ("pitchDeck", "pitch_deck"), ("pan", "pan"), ("gst", "gst"), ("mou", "mou"),
-    ("aoa", "aoa"), ("startupIndia", "startup_india"), ("bankStatement", "bank_statement"),
-    ("ip", "ip"), ("agreements", "agreements"), ("reports", "reports"),
-    ("funding", "funding"), ("investorDeck", "investor_deck"), ("meetingMinutes", "meeting_minutes"),
+    ("pitchDeck", "pitch_deck"), ("aoa", "aoa"),
 ]
 
 def insert_generic_record(table, fields_map, data):
@@ -839,9 +836,40 @@ def get_startup_crm():
 @app.route('/startup-crm', methods=['POST'])
 @login_required
 def add_startup_crm():
-    data = request.json
-    insert_generic_record("startup_crm", STARTUP_CRM_FIELDS, data)
+    data = request.form
+    photo_filename = ""
+    photo = request.files.get('logo')
+    if photo and photo.filename:
+        photo_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'startup_photos')
+        os.makedirs(photo_folder, exist_ok=True)
+        photo_filename = secure_filename(f"{data.get('startupName','startup')}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{photo.filename}")
+        photo.save(os.path.join(photo_folder, photo_filename))
+
+    columns = [col for _, col in STARTUP_CRM_FIELDS] + ["created_at"]
+    values = []
+    for json_key, col in STARTUP_CRM_FIELDS:
+        if col == "logo":
+            values.append(photo_filename)
+        else:
+            values.append(data.get(json_key, ""))
+    values.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    placeholders = ",".join(["?"] * len(columns))
+    conn = get_db_connection()
+    conn.execute(f"INSERT INTO startup_crm ({','.join(columns)}) VALUES ({placeholders})", values)
+    conn.commit()
+    conn.close()
     return jsonify({"message": "Startup CRM record saved"}), 200
+
+@app.route('/download-startup-photo/<int:id>', methods=['GET'])
+@login_required
+def download_startup_photo(id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT logo FROM startup_crm WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    if not row or not row['logo']:
+        return jsonify({"error": "Photo not found"}), 404
+    photo_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'startup_photos')
+    return send_from_directory(photo_folder, row['logo'], as_attachment=False)
 
 @app.route('/founder-crm', methods=['GET'])
 @login_required
