@@ -526,7 +526,7 @@ export default function App() {
     { key: "pan", label: "PAN" },
     { key: "gst", label: "GST" },
     { key: "mou", label: "MOU" },
-    { key: "aoa", label: "Product Pics" },
+    { key: "aoa", label: "Product Pick" },
     { key: "startup_india", label: "Startup India" },
     { key: "bank_statement", label: "Bank Statement" },
     { key: "ip", label: "IP" },
