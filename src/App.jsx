@@ -127,12 +127,16 @@ export default function App() {
     phone: "", website: "", linkedin: "", startupIndiaNumber: "", dpiitNumber: "", cin: "",
     pan: "", sector: "", subSector: "", technology: "", trlLevel: "",
     incubationStage: "", currentStatus: "", revenue: "", valuation: "", investmentRaised: "",
-    assignedMentor: "", assignedRm: "", currentMilestone: "", riskScore: "", nextReviewDate: "", remarks: "",
+    assignedMentor: "", assignedRm: "", currentMilestone: "", riskScore: "", city: "", address: "", remarks: "",
   };
   const [incubatedForm, setIncubatedForm] = useState(blankIncubatedForm);
   const [startupPhotoFile, setStartupPhotoFile] = useState(null);
 
-  const blankDocumentRepoFiles = { pitchDeck: null, aoa: null };
+  const blankDocumentRepoFiles = {
+    pitchDeck: null, pan: null, gst: null, mou: null, aoa: null, startupIndia: null,
+    bankStatement: null, ip: null, agreements: null, reports: null, funding: null,
+    investorDeck: null, meetingMinutes: null,
+  };
   const [documentRepoFiles, setDocumentRepoFiles] = useState(blankDocumentRepoFiles);
   const [viewingStartupCrmRecord, setViewingStartupCrmRecord] = useState(null);
 
@@ -513,13 +517,24 @@ export default function App() {
     ["incubation_stage", "Incubation Stage"], ["current_status", "Number of Employees"], ["revenue", "Revenue"],
     ["valuation", "Valuation"], ["investment_raised", "Investment Raised"],
     ["assigned_mentor", "Assigned Mentor"], ["assigned_rm", "Stage"], ["current_milestone", "Success Story"],
-    ["risk_score", "Risk Score"], ["next_review_date", "City / Address"],
+    ["risk_score", "Risk Score"], ["city", "City"], ["address", "Address"],
     ["remarks", "Remarks"], ["created_at", "Added On"],
   ];
 
   const documentRepoColumns = [
     { key: "pitch_deck", label: "Pitch Deck" },
-    { key: "aoa", label: "AOA" },
+    { key: "pan", label: "PAN" },
+    { key: "gst", label: "GST" },
+    { key: "mou", label: "MOU" },
+    { key: "aoa", label: "Product Pics" },
+    { key: "startup_india", label: "Startup India" },
+    { key: "bank_statement", label: "Bank Statement" },
+    { key: "ip", label: "IP" },
+    { key: "agreements", label: "Agreements" },
+    { key: "reports", label: "Reports" },
+    { key: "funding", label: "Funding" },
+    { key: "investor_deck", label: "Investor Deck" },
+    { key: "meeting_minutes", label: "Meeting Minutes" },
   ];
 
   const exportStartupCrmToExcel = () => {
@@ -1914,13 +1929,26 @@ export default function App() {
 
               {[
                 ["currentMilestone", "Success Story"], ["riskScore", "Risk Score"],
-                ["nextReviewDate", "City / Address"], ["remarks", "Remarks"],
               ].map(([key, label]) => (
                 <div className="form-field" key={key}>
                   <label>{label}</label>
                   <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
                 </div>
               ))}
+
+              <div className="form-field">
+                <label>City</label>
+                <input type="text" value={incubatedForm.city} onChange={(e) => setIncubatedForm({ ...incubatedForm, city: e.target.value })} />
+              </div>
+              <div className="form-field">
+                <label>Address</label>
+                <input type="text" value={incubatedForm.address} onChange={(e) => setIncubatedForm({ ...incubatedForm, address: e.target.value })} />
+              </div>
+
+              <div className="form-field">
+                <label>Remarks</label>
+                <input type="text" value={incubatedForm.remarks} onChange={(e) => setIncubatedForm({ ...incubatedForm, remarks: e.target.value })} />
+              </div>
             </div>
 
             <div className="card-head">
@@ -1929,7 +1957,10 @@ export default function App() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "1.5rem" }}>
               {[
-                ["pitchDeck", "Pitch Deck"], ["aoa", "AOA"],
+                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "Product Pics"],
+                ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
+                ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
+                ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
               ].map(([key, label]) => (
                 <div key={key} style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "6px" }}>{label}</div>

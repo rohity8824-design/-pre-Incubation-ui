@@ -749,10 +749,21 @@ def ensure_startup_crm_table():
             employees TEXT, valuation TEXT, investment_raised TEXT, burn_rate TEXT, runway TEXT,
             assigned_mentor TEXT, assigned_rm TEXT, current_milestone TEXT,
             risk_score TEXT, graduation_score TEXT, next_review_date TEXT, remarks TEXT,
+            city TEXT, address TEXT,
             created_at TEXT
         )
     ''')
     conn.commit()
+    conn.close()
+
+def ensure_startup_crm_extra_columns():
+    conn = get_db_connection()
+    for col in ["city", "address"]:
+        try:
+            conn.execute(f"ALTER TABLE startup_crm ADD COLUMN {col} TEXT")
+            conn.commit()
+        except Exception:
+            pass
     conn.close()
 
 def ensure_founder_crm_table():
@@ -799,6 +810,7 @@ STARTUP_CRM_FIELDS = [
     ("assignedRm", "assigned_rm"), ("currentMilestone", "current_milestone"),
     ("riskScore", "risk_score"), ("graduationScore", "graduation_score"),
     ("nextReviewDate", "next_review_date"), ("remarks", "remarks"),
+    ("city", "city"), ("address", "address"),
 ]
 
 FOUNDER_CRM_FIELDS = [
@@ -812,7 +824,10 @@ FOUNDER_CRM_FIELDS = [
 ]
 
 DOCUMENT_REPO_FIELDS = [
-    ("pitchDeck", "pitch_deck"), ("aoa", "aoa"),
+    ("pitchDeck", "pitch_deck"), ("pan", "pan"), ("gst", "gst"), ("mou", "mou"),
+    ("aoa", "aoa"), ("startupIndia", "startup_india"), ("bankStatement", "bank_statement"),
+    ("ip", "ip"), ("agreements", "agreements"), ("reports", "reports"),
+    ("funding", "funding"), ("investorDeck", "investor_deck"), ("meetingMinutes", "meeting_minutes"),
 ]
 
 def insert_generic_record(table, fields_map, data):
@@ -935,6 +950,7 @@ def download_document(id, field):
     return send_from_directory(doc_folder, row[field], as_attachment=True)
 
 ensure_startup_crm_table()
+ensure_startup_crm_extra_columns()
 ensure_founder_crm_table()
 ensure_document_repository_table()
 
