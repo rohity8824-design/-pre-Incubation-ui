@@ -1957,7 +1957,7 @@ export default function App() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "1.5rem" }}>
               {[
-                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "Product Pics"],
+                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "Product Pick"],
                 ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
                 ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
                 ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
