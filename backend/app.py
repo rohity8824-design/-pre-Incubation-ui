@@ -949,10 +949,94 @@ def download_document(id, field):
     doc_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'documents')
     return send_from_directory(doc_folder, row[field], as_attachment=True)
 
+# ======================================
+# INTERNSHIP APPLICATIONS
+# ======================================
+def ensure_internship_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS internship_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT, email TEXT, phone TEXT, positions TEXT,
+            resume_filename TEXT, portfolio_filename TEXT, submitted_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+@app.route('/register-internship', methods=['POST'])
+def register_internship():
+    try:
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        positions = request.form.get('positions', '')
+
+        if not name or not email or not phone:
+            return jsonify({"error": "Name, Email and Phone Number are required"}), 400
+
+        email_pattern = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+        if not email_pattern.match(email):
+            return jsonify({"error": "Please provide a valid Email address"}), 400
+
+        if not re.match(r"^[0-9]{10}$", phone):
+            return jsonify({"error": "Please provide a valid 10-digit Phone Number"}), 400
+
+        resume = request.files.get('resume')
+        if not resume or not resume.filename:
+            return jsonify({"error": "Resume is required"}), 400
+
+        portfolio = request.files.get('portfolio')
+        if not portfolio or not portfolio.filename:
+            return jsonify({"error": "Portfolio is required"}), 400
+
+        internship_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'internship_files')
+        os.makedirs(internship_folder, exist_ok=True)
+
+        resume_filename = secure_filename(f"{name}_resume_{datetime.now().strftime('%Y%m%d%H%M%S')}_{resume.filename}")
+        resume.save(os.path.join(internship_folder, resume_filename))
+
+        portfolio_filename = secure_filename(f"{name}_portfolio_{datetime.now().strftime('%Y%m%d%H%M%S')}_{portfolio.filename}")
+        portfolio.save(os.path.join(internship_folder, portfolio_filename))
+
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO internship_applications (name, email, phone, positions, resume_filename, portfolio_filename, submitted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (name, email, phone, positions, resume_filename, portfolio_filename, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Internship application submitted successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/internship-applications', methods=['GET'])
+@login_required
+def get_internship_applications():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM internship_applications ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
+@app.route('/download-internship-file/<int:id>/<field>', methods=['GET'])
+@login_required
+def download_internship_file(id, field):
+    if field not in ["resume_filename", "portfolio_filename"]:
+        return jsonify({"error": "Invalid field"}), 400
+    conn = get_db_connection()
+    row = conn.execute(f"SELECT {field} FROM internship_applications WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    if not row or not row[field]:
+        return jsonify({"error": "File not found"}), 404
+    internship_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'internship_files')
+    return send_from_directory(internship_folder, row[field], as_attachment=True)
+
 ensure_startup_crm_table()
 ensure_startup_crm_extra_columns()
 ensure_founder_crm_table()
 ensure_document_repository_table()
+ensure_internship_table()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

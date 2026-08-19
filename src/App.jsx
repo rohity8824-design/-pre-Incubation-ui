@@ -98,6 +98,11 @@ export default function App() {
   const [pitchingStartup, setPitchingStartup] = useState(null);
   const [pitchForm, setPitchForm] = useState({ pitch_date: "", pitch_time: "", pitch_link: "" });
   const [activeView, setActiveView] = useState("preincubation");
+  const [internshipForm, setInternshipForm] = useState({ name: "", email: "", phone: "", positions: [] });
+  const [internshipResume, setInternshipResume] = useState(null);
+  const [internshipPortfolio, setInternshipPortfolio] = useState(null);
+  const [isSubmittingInternship, setIsSubmittingInternship] = useState(false);
+  const [internshipApplications, setInternshipApplications] = useState([]);
   const [incubationForm, setIncubationForm] = useState({
     startupName: "", email: "", mobileNo: "", state: "", city: "",
     sector: "", incubateeLevel: "", typeOfProgram: [], operationalModel: "",
@@ -293,6 +298,91 @@ export default function App() {
       }
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  // --- INTERNSHIP APPLICATIONS ---
+  const fetchInternshipApplications = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/internship-applications`, { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setInternshipApplications(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleInternshipChange = (e) => {
+    setInternshipForm({ ...internshipForm, [e.target.name]: e.target.value });
+  };
+
+  const handleInternshipPositionToggle = (value) => {
+    setInternshipForm((prev) => {
+      const exists = prev.positions.includes(value);
+      const updated = exists ? prev.positions.filter((v) => v !== value) : [...prev.positions, value];
+      return { ...prev, positions: updated };
+    });
+  };
+
+  const handleInternshipSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmittingInternship) return;
+
+    if (!internshipForm.name.trim()) {
+      alert("Please enter your Name.");
+      return;
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(internshipForm.email.trim())) {
+      alert("Please enter a valid Email address.");
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(internshipForm.phone.trim())) {
+      alert("Please enter a valid 10-digit Phone Number.");
+      return;
+    }
+    if (internshipForm.positions.length === 0) {
+      alert("Please select at least one position you're interested in.");
+      return;
+    }
+    if (!internshipResume) {
+      alert("Please upload your Resume.");
+      return;
+    }
+    if (!internshipPortfolio) {
+      alert("Please upload your Portfolio.");
+      return;
+    }
+
+    setIsSubmittingInternship(true);
+    try {
+      const data = new FormData();
+      data.append("name", internshipForm.name);
+      data.append("email", internshipForm.email);
+      data.append("phone", internshipForm.phone);
+      data.append("positions", internshipForm.positions.join(", "));
+      data.append("resume", internshipResume);
+      if (internshipPortfolio) data.append("portfolio", internshipPortfolio);
+
+      const response = await fetch(`${BASE_URL}/register-internship`, {
+        method: "POST", credentials: "include", body: data,
+      });
+      const result = await response.json();
+      if (response.ok) {
+        alert(result.message);
+        setInternshipForm({ name: "", email: "", phone: "", positions: [] });
+        setInternshipResume(null);
+        setInternshipPortfolio(null);
+        if (isLoggedIn) await fetchInternshipApplications();
+      } else {
+        alert(result.error);
+      }
+    } catch (error) {
+      alert("Backend Connection Error");
+    } finally {
+      setIsSubmittingInternship(false);
     }
   };
 
@@ -512,7 +602,7 @@ export default function App() {
     ["founder", "Founder Name"], ["co_founder", "Co-Founder Name"], ["email", "Email"],
     ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
     ["startup_india_number", "Startup India Number"], ["dpiit_number", "DPIIT Number"], ["cin", "CIN"],
-    ["sector", "Sector"],
+    ["pan", "PAN"], ["sector", "Sector"],
     ["sub_sector", "Sub Sector"], ["technology", "Technology"], ["trl_level", "TRL Level"],
     ["incubation_stage", "Incubation Stage"], ["current_status", "Number of Employees"], ["revenue", "Revenue"],
     ["valuation", "Valuation"], ["investment_raised", "Investment Raised"],
@@ -526,7 +616,7 @@ export default function App() {
     { key: "pan", label: "PAN" },
     { key: "gst", label: "GST" },
     { key: "mou", label: "MOU" },
-    { key: "aoa", label: "Product Pick" },
+    { key: "aoa", label: "Product Pics" },
     { key: "startup_india", label: "Startup India" },
     { key: "bank_statement", label: "Bank Statement" },
     { key: "ip", label: "IP" },
@@ -984,6 +1074,7 @@ export default function App() {
           <div className="nav-label">Overview</div>
           <div className={`nav-item ${activeView === "preincubation" ? "active" : ""}`} onClick={() => setActiveView("preincubation")}>Pre Incubation</div>
           <div className={`nav-item ${activeView === "incubation" ? "active" : ""}`} onClick={() => { setActiveView("incubation"); if (isLoggedIn) fetchIncubationApplications(); }}>Incubation</div>
+          <div className={`nav-item ${activeView === "internship" ? "active" : ""}`} onClick={() => { setActiveView("internship"); if (isLoggedIn) fetchInternshipApplications(); }}>Internship</div>
           <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => { setActiveView("leaderboard"); if (isLoggedIn) fetchIncubationApplications(); }}>🏆 Leaderboard</div>
           <div className="nav-item">Startups</div>
           <div className="nav-label">Records</div>
@@ -1794,6 +1885,121 @@ export default function App() {
           </div>
         )}
 
+        {activeView === "internship" && (
+          <div className="card">
+            <div className="logo-pill" style={{ marginBottom: "1rem" }}>
+              <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
+              <span className="logo-divider"></span>
+              <img src="/manipal-logo.png" alt="Manipal University Jaipur" className="logo-manipal"/>
+            </div>
+            <div className="card-title">Internship Opportunities at AIC-MUJ Incubated Startups</div>
+
+            <div style={{ background: "#F8F7FE", borderRadius: "10px", padding: "1.2rem 1.5rem", marginBottom: "1.5rem", fontSize: "13px", lineHeight: "1.6", color: "#444" }}>
+              <p><strong>1.) GRAPHIC DESIGN INTERN</strong><br/>
+              Design content for marketing work — social media posts, blogs, videos, posters, outdoor creatives, product packaging variations, proposals and other creative collaterals.<br/>
+              <em>Benefits: Work from home · Flexible Timings · Experience Certificate</em></p>
+
+              <p><strong>2.) WEBSITE DEVELOPER INTERN</strong><br/>
+              Responsible for coding and designing the layout of our website — from concept to completion, using HTML/CSS/WordPress, integrating back-end services, and maintaining documentation.<br/>
+              <em>Benefits: Work from home · Flexible Timings · Experience Certificate · Experienced individuals preferred</em></p>
+
+              <p><strong>3.) SOCIAL MEDIA MARKETING INTERN</strong><br/>
+              Help plan monthly social media strategies, grow brand awareness, maintain consistent messaging, and manage the editorial calendar across platforms like Instagram, Facebook, YouTube and LinkedIn.<br/>
+              <em>Benefits: Work from home · Flexible Timings · Experience Certificate · Experienced individuals preferred</em></p>
+
+              <p style={{ marginBottom: 0 }}><strong>4.) CONTENT WRITER</strong><br/>
+              Research industry topics, generate content ideas, write and proofread blogs, case studies and short-form content for marketing collaterals.<br/>
+              <em>Benefits: Work from home · Flexible Timings · Experience Certificate · Experienced individuals preferred</em></p>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-field">
+                <label>Name *</label>
+                <input type="text" name="name" value={internshipForm.name} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="First and last name"/>
+              </div>
+              <div className="form-field">
+                <label>Email *</label>
+                <input type="email" name="email" value={internshipForm.email} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
+              </div>
+              <div className="form-field">
+                <label>Phone Number *</label>
+                <input type="tel" name="phone" value={internshipForm.phone} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="10-digit number"/>
+              </div>
+            </div>
+
+            <div style={{ margin: "1rem 0" }}>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Which position(s) are you interested in? *</label>
+              {["GRAPHIC DESIGN INTERN", "WEBSITE DEVELOPER INTERN", "SOCIAL MEDIA MARKETING INTERN", "CONTENT WRITER"].map((opt) => (
+                <label key={opt} style={{ marginRight: "16px", display: "inline-flex", alignItems: "center", gap: "4px", marginBottom: "8px" }}>
+                  <input type="checkbox" checked={internshipForm.positions.includes(opt)} onChange={() => handleInternshipPositionToggle(opt)} disabled={isSubmittingInternship}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+
+            <div className="file-grid">
+              <div className="file-upload">
+                <label>Submit your resume *</label>
+                <input type="file" accept=".pdf,.doc,.docx" disabled={isSubmittingInternship} onChange={(e) => setInternshipResume(e.target.files[0])}/>
+              </div>
+              <div className="file-upload">
+                <label>Submit your portfolio *</label>
+                <input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" disabled={isSubmittingInternship} onChange={(e) => setInternshipPortfolio(e.target.files[0])}/>
+              </div>
+            </div>
+
+            <button className="submit-btn" onClick={handleInternshipSubmit} disabled={isSubmittingInternship} style={{ opacity: isSubmittingInternship ? 0.7 : 1 }}>
+              {isSubmittingInternship ? "Submitting..." : "Submit Application"}
+            </button>
+
+            {isLoggedIn && (
+              <div style={{ marginTop: "2rem" }}>
+                <div className="card-title">Submitted Internship Applications</div>
+                <div style={{ overflowX: "auto", width: "100%", marginTop: "1rem" }}>
+                  <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                        <th style={{ padding: "12px" }}>ID</th>
+                        <th style={{ padding: "12px" }}>Name</th>
+                        <th style={{ padding: "12px" }}>Email</th>
+                        <th style={{ padding: "12px" }}>Phone</th>
+                        <th style={{ padding: "12px" }}>Position(s)</th>
+                        <th style={{ padding: "12px" }}>Submitted</th>
+                        <th style={{ padding: "12px" }}>Resume</th>
+                        <th style={{ padding: "12px" }}>Portfolio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {internshipApplications.length === 0 ? (
+                        <tr><td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No internship applications yet.</td></tr>
+                      ) : internshipApplications.map((a) => (
+                        <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                          <td style={{ padding: "12px" }}>{a.id}</td>
+                          <td style={{ padding: "12px", fontWeight: "bold" }}>{a.name}</td>
+                          <td style={{ padding: "12px" }}>{a.email}</td>
+                          <td style={{ padding: "12px" }}>{a.phone}</td>
+                          <td style={{ padding: "12px" }}>{a.positions}</td>
+                          <td style={{ padding: "12px" }}>{a.submitted_at}</td>
+                          <td style={{ padding: "12px" }}>
+                            {a.resume_filename ? (
+                              <a href={`${BASE_URL}/download-internship-file/${a.id}/resume_filename`} target="_blank" rel="noreferrer">Download</a>
+                            ) : "—"}
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            {a.portfolio_filename ? (
+                              <a href={`${BASE_URL}/download-internship-file/${a.id}/portfolio_filename`} target="_blank" rel="noreferrer">Download</a>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeView === "leaderboard" && (
           <div className="card">
             <div className="card-title">🏆 Startup Leaderboard</div>
@@ -1903,7 +2109,7 @@ export default function App() {
                 ["founder", "Founder Name"], ["coFounder", "Co-Founder Name"], ["email", "Email"],
                 ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
                 ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
-                ["sector", "Sector"],
+                ["pan", "PAN"], ["sector", "Sector"],
                 ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
                 ["incubationStage", "Incubation Stage"], ["currentStatus", "Number of Employees"], ["revenue", "Revenue"],
                 ["valuation", "Valuation"], ["investmentRaised", "Investment Raised"],
@@ -1957,7 +2163,7 @@ export default function App() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "1.5rem" }}>
               {[
-                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "Product Pick"],
+                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "Product Pics"],
                 ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
                 ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
                 ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
