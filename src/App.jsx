@@ -103,6 +103,9 @@ export default function App() {
   const [internshipPortfolio, setInternshipPortfolio] = useState(null);
   const [isSubmittingInternship, setIsSubmittingInternship] = useState(false);
   const [internshipApplications, setInternshipApplications] = useState([]);
+  const [showInternshipReceipt, setShowInternshipReceipt] = useState(false);
+  const [internshipReceiptData, setInternshipReceiptData] = useState(null);
+  const internshipReceiptPrintRef = useRef(null);
   const [incubationForm, setIncubationForm] = useState({
     startupName: "", email: "", mobileNo: "", state: "", city: "",
     sector: "", incubateeLevel: "", typeOfProgram: [], operationalModel: "",
@@ -371,7 +374,18 @@ export default function App() {
       });
       const result = await response.json();
       if (response.ok) {
-        alert(result.message);
+        setInternshipReceiptData({
+          id: result.id,
+          name: internshipForm.name,
+          email: internshipForm.email,
+          phone: internshipForm.phone,
+          positions: internshipForm.positions.join(", "),
+          date: new Date().toLocaleDateString(),
+          resumeName: internshipResume ? internshipResume.name : "",
+          portfolioName: internshipPortfolio ? internshipPortfolio.name : "",
+        });
+        setShowInternshipReceipt(true);
+
         setInternshipForm({ name: "", email: "", phone: "", positions: [] });
         setInternshipResume(null);
         setInternshipPortfolio(null);
@@ -384,6 +398,32 @@ export default function App() {
     } finally {
       setIsSubmittingInternship(false);
     }
+  };
+
+  const handleSaveInternshipReceiptPDF = async () => {
+    const element = internshipReceiptPrintRef.current;
+    if (!element) return;
+    const canvas = await html2canvas(element, {
+      scale: 2, useCORS: true,
+      ignoreElements: (el) => el.classList && el.classList.contains('no-print'),
+    });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    pdf.save(`${internshipReceiptData?.name || "applicant"}_internship_application.pdf`);
   };
 
   // --- INCUBATED STARTUPS RECORDS ---
@@ -1998,6 +2038,66 @@ export default function App() {
               </div>
             )}
           </div>
+        )}
+
+        {showInternshipReceipt && internshipReceiptData && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" ref={internshipReceiptPrintRef} style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "90%", maxWidth: "600px", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
+
+              <div className="modal-branding-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #6C5CE7", paddingBottom: "16px", marginBottom: "20px" }}>
+                <img src={`${window.location.origin}/aic-logo.png`} alt="AIC MUJ" style={{ height: "65px", width: "auto", objectFit: "contain" }} />
+                <img src={`${window.location.origin}/manipal-logo.png`} alt="Manipal University Jaipur" style={{ height: "55px", width: "auto", objectFit: "contain" }} />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <h2 style={{ margin: 0 }}>Application Confirmation</h2>
+                <div className="no-print">
+                  <button className="btn-print" onClick={() => window.print()} style={{ marginRight: "8px" }}>Print</button>
+                  <button className="btn-print" onClick={handleSaveInternshipReceiptPDF} style={{ marginRight: "8px" }}>Save PDF</button>
+                  <button className="btn-close" onClick={() => setShowInternshipReceipt(false)}>✕</button>
+                </div>
+              </div>
+
+              <p style={{ color: "#00B894", fontWeight: "bold", marginBottom: "1.5rem" }}>✓ Your internship application has been submitted successfully.</p>
+
+              <div className="view-grid" style={{ marginBottom: "1.5rem" }}>
+                <p><strong>Name: </strong>{internshipReceiptData.name}</p>
+                <p><strong>Email: </strong>{internshipReceiptData.email}</p>
+                <p><strong>Phone: </strong>{internshipReceiptData.phone}</p>
+                <p><strong>Date: </strong>{internshipReceiptData.date}</p>
+                <p className="full"><strong>Position(s) Applied: </strong>{internshipReceiptData.positions}</p>
+              </div>
+
+              <div style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "16px" }}>
+                <h3 style={{ margin: "0 0 12px 0", fontSize: "15px" }}>Attached Documents</h3>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F1F1F8" }}>
+                  <span>📄 Resume — {internshipReceiptData.resumeName}</span>
+                  <a
+                    className="no-print"
+                    href={`${BASE_URL}/download-internship-file-public/${internshipReceiptData.id}/resume_filename?email=${encodeURIComponent(internshipReceiptData.email)}`}
+                    target="_blank" rel="noreferrer"
+                  >
+                    Download
+                  </a>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
+                  <span>📄 Portfolio — {internshipReceiptData.portfolioName}</span>
+                  <a
+                    className="no-print"
+                    href={`${BASE_URL}/download-internship-file-public/${internshipReceiptData.id}/portfolio_filename?email=${encodeURIComponent(internshipReceiptData.email)}`}
+                    target="_blank" rel="noreferrer"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+
+              <p style={{ fontSize: "12px", color: "#9797B5", marginTop: "1rem" }}>
+                Keep this confirmation for your records. Our team will reach out to you via email regarding the next steps.
+              </p>
+            </div>
+          </div>
+          , document.body
         )}
 
         {activeView === "leaderboard" && (

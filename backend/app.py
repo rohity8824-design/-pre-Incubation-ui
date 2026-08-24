@@ -1000,14 +1000,15 @@ def register_internship():
         portfolio.save(os.path.join(internship_folder, portfolio_filename))
 
         conn = get_db_connection()
-        conn.execute('''
+        cursor = conn.execute('''
             INSERT INTO internship_applications (name, email, phone, positions, resume_filename, portfolio_filename, submitted_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (name, email, phone, positions, resume_filename, portfolio_filename, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        new_id = cursor.lastrowid
         conn.commit()
         conn.close()
 
-        return jsonify({"message": "Internship application submitted successfully!"}), 200
+        return jsonify({"message": "Internship application submitted successfully!", "id": new_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1029,6 +1030,23 @@ def download_internship_file(id, field):
     conn.close()
     if not row or not row[field]:
         return jsonify({"error": "File not found"}), 404
+    internship_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'internship_files')
+    return send_from_directory(internship_folder, row[field], as_attachment=True)
+
+# Public download for the applicant right after they submit — requires the email
+# on the record to match, so a random ID guess alone can't pull someone else's file.
+@app.route('/download-internship-file-public/<int:id>/<field>', methods=['GET'])
+def download_internship_file_public(id, field):
+    if field not in ["resume_filename", "portfolio_filename"]:
+        return jsonify({"error": "Invalid field"}), 400
+    email = (request.args.get('email') or '').strip().lower()
+    conn = get_db_connection()
+    row = conn.execute(f"SELECT {field}, email FROM internship_applications WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    if not row or not row[field]:
+        return jsonify({"error": "File not found"}), 404
+    if not email or email != (row['email'] or '').strip().lower():
+        return jsonify({"error": "Unauthorized"}), 403
     internship_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'internship_files')
     return send_from_directory(internship_folder, row[field], as_attachment=True)
 
