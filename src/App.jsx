@@ -1223,8 +1223,8 @@ export default function App() {
                 <input type="text" name="name" value={formData.name} onChange={handleChange} disabled={isSubmitting}/>
               </div>
               <div className="form-field">
-                <label>Email</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} disabled={isSubmitting}/>
+                <label>Email <span style={{ color: "red" }}>*</span></label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} disabled={isSubmitting} required/>
               </div>
               <div className="form-field">
                 <label>Gender</label>
@@ -1244,8 +1244,8 @@ export default function App() {
                 <input type="text" name="address" value={formData.address} onChange={handleChange} disabled={isSubmitting}/>
               </div>
               <div className="form-field">
-                <label>Contact Number</label>
-                <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} disabled={isSubmitting}/>
+                <label>Contact Number <span style={{ color: "red" }}>*</span></label>
+                <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} disabled={isSubmitting} required/>
               </div>
               <div className="form-field">
                 <label>Native State</label>
@@ -1678,12 +1678,12 @@ export default function App() {
                 <input type="text" name="startupName" value={incubationForm.startupName} onChange={handleIncubationChange} disabled={isSubmittingIncubation}/>
               </div>
               <div className="form-field">
-                <label>Email Id</label>
-                <input type="email" name="email" value={incubationForm.email} onChange={handleIncubationChange} disabled={isSubmittingIncubation}/>
+                <label>Email Id <span style={{ color: "red" }}>*</span></label>
+                <input type="email" name="email" value={incubationForm.email} onChange={handleIncubationChange} disabled={isSubmittingIncubation} required/>
               </div>
               <div className="form-field">
-                <label>Mobile No</label>
-                <input type="text" name="mobileNo" value={incubationForm.mobileNo} onChange={handleIncubationChange} disabled={isSubmittingIncubation}/>
+                <label>Mobile No <span style={{ color: "red" }}>*</span></label>
+                <input type="text" name="mobileNo" value={incubationForm.mobileNo} onChange={handleIncubationChange} disabled={isSubmittingIncubation} required/>
               </div>
               <div className="form-field">
                 <label>State</label>
@@ -1954,21 +1954,21 @@ export default function App() {
 
             <div className="form-grid">
               <div className="form-field">
-                <label>Name *</label>
+                <label>Name <span style={{ color: "red" }}>*</span></label>
                 <input type="text" name="name" value={internshipForm.name} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="First and last name"/>
               </div>
               <div className="form-field">
-                <label>Email *</label>
+                <label>Email <span style={{ color: "red" }}>*</span></label>
                 <input type="email" name="email" value={internshipForm.email} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
               </div>
               <div className="form-field">
-                <label>Phone Number *</label>
+                <label>Phone Number <span style={{ color: "red" }}>*</span></label>
                 <input type="tel" name="phone" value={internshipForm.phone} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="10-digit number"/>
               </div>
             </div>
 
             <div style={{ margin: "1rem 0" }}>
-              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Which position(s) are you interested in? *</label>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Which position(s) are you interested in? <span style={{ color: "red" }}>*</span></label>
               {["GRAPHIC DESIGN INTERN", "WEBSITE DEVELOPER INTERN", "SOCIAL MEDIA MARKETING INTERN", "CONTENT WRITER"].map((opt) => (
                 <label key={opt} style={{ marginRight: "16px", display: "inline-flex", alignItems: "center", gap: "4px", marginBottom: "8px" }}>
                   <input type="checkbox" checked={internshipForm.positions.includes(opt)} onChange={() => handleInternshipPositionToggle(opt)} disabled={isSubmittingInternship}/>
@@ -1979,11 +1979,11 @@ export default function App() {
 
             <div className="file-grid">
               <div className="file-upload">
-                <label>Submit your resume *</label>
+                <label>Submit your resume <span style={{ color: "red" }}>*</span></label>
                 <input type="file" accept=".pdf,.doc,.docx" disabled={isSubmittingInternship} onChange={(e) => setInternshipResume(e.target.files[0])}/>
               </div>
               <div className="file-upload">
-                <label>Submit your portfolio *</label>
+                <label>Submit your portfolio <span style={{ color: "red" }}>*</span></label>
                 <input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" disabled={isSubmittingInternship} onChange={(e) => setInternshipPortfolio(e.target.files[0])}/>
               </div>
             </div>
@@ -2206,18 +2206,18 @@ export default function App() {
               </div>
 
               {[
-                ["founder", "Founder Name"], ["coFounder", "Co-Founder Name"], ["email", "Email"],
-                ["phone", "Phone"], ["website", "Website"], ["linkedin", "LinkedIn"],
+                ["founder", "Founder Name"], ["coFounder", "Co-Founder Name"], ["email", "Email", true],
+                ["phone", "Phone", true], ["website", "Website"], ["linkedin", "LinkedIn"],
                 ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
                 ["pan", "PAN"], ["sector", "Sector"],
                 ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
                 ["incubationStage", "Incubation Stage"], ["currentStatus", "Number of Employees"], ["revenue", "Revenue"],
                 ["valuation", "Valuation"], ["investmentRaised", "Investment Raised"],
                 ["assignedMentor", "Assigned Mentor"],
-              ].map(([key, label]) => (
+              ].map(([key, label, isRequired]) => (
                 <div className="form-field" key={key}>
-                  <label>{label}</label>
-                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
+                  <label>{label}{isRequired && <span style={{ color: "red" }}> *</span>}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} required={isRequired}/>
                 </div>
               ))}
 
