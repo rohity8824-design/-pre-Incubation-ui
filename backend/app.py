@@ -1050,11 +1050,136 @@ def download_internship_file_public(id, field):
     internship_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'internship_files')
     return send_from_directory(internship_folder, row[field], as_attachment=True)
 
+# ======================================
+# GENERIC MODULE RECORDS SYSTEM
+# Powers: Enquiries (Pre-Incubation/Incubation/Internship), Events, MoU, AIM,
+# SISFS Scheme, Coworking Area, Device/Facility Use — one table, one set of
+# routes, reused everywhere via a "module" + "category" key instead of a new
+# table per dashboard section.
+# ======================================
+
+def ensure_module_records_table():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS module_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            module TEXT, category TEXT,
+            title TEXT, description TEXT,
+            contact_name TEXT, contact_email TEXT, contact_phone TEXT,
+            record_date TEXT, status TEXT, notes TEXT, attachment TEXT,
+            created_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+@app.route('/module-records', methods=['GET'])
+@login_required
+def get_module_records():
+    module = request.args.get('module', '')
+    category = request.args.get('category', '')
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT * FROM module_records WHERE module = ? AND category = ? ORDER BY id DESC",
+        (module, category)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows]), 200
+
+@app.route('/module-records', methods=['POST'])
+@login_required
+def add_module_record():
+    module = request.form.get('module', '')
+    category = request.form.get('category', '')
+    if not module or not category:
+        return jsonify({"error": "module and category are required"}), 400
+
+    title = request.form.get('title', '')
+    description = request.form.get('description', '')
+    contact_name = request.form.get('contactName', '')
+    contact_email = request.form.get('contactEmail', '')
+    contact_phone = request.form.get('contactPhone', '')
+    record_date = request.form.get('recordDate', '')
+    status = request.form.get('status', '')
+    notes = request.form.get('notes', '')
+
+    attachment_filename = ""
+    attachment = request.files.get('attachment')
+    if attachment and attachment.filename:
+        folder = os.path.join(app.config['UPLOAD_FOLDER'], 'module_records')
+        os.makedirs(folder, exist_ok=True)
+        attachment_filename = secure_filename(
+            f"{module}_{category}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{attachment.filename}"
+        )
+        attachment.save(os.path.join(folder, attachment_filename))
+
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO module_records
+        (module, category, title, description, contact_name, contact_email, contact_phone, record_date, status, notes, attachment, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        module, category, title, description, contact_name, contact_email, contact_phone,
+        record_date, status, notes, attachment_filename, datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Record saved"}), 200
+
+@app.route('/module-records/<int:id>', methods=['DELETE'])
+@login_required
+def delete_module_record(id):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM module_records WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Deleted"}), 200
+
+@app.route('/download-module-attachment/<int:id>', methods=['GET'])
+@login_required
+def download_module_attachment(id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT attachment FROM module_records WHERE id = ?", (id,)).fetchone()
+    conn.close()
+    if not row or not row['attachment']:
+        return jsonify({"error": "File not found"}), 404
+    folder = os.path.join(app.config['UPLOAD_FOLDER'], 'module_records')
+    return send_from_directory(folder, row['attachment'], as_attachment=True)
+
+# ======================================
+# PAST INTERN FLAG (for Internship > Past Interns tab)
+# ======================================
+
+def ensure_internship_past_column():
+    conn = get_db_connection()
+    try:
+        conn.execute("ALTER TABLE internship_applications ADD COLUMN is_past_intern TEXT DEFAULT 'No'")
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
+
+@app.route('/toggle-past-intern/<int:id>', methods=['POST'])
+@login_required
+def toggle_past_intern(id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM internship_applications WHERE id = ?", (id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Not found"}), 404
+    new_val = "No" if row["is_past_intern"] == "Yes" else "Yes"
+    conn.execute("UPDATE internship_applications SET is_past_intern = ? WHERE id = ?", (new_val, id))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Updated", "is_past_intern": new_val}), 200
+
 ensure_startup_crm_table()
 ensure_startup_crm_extra_columns()
 ensure_founder_crm_table()
 ensure_document_repository_table()
 ensure_internship_table()
+ensure_module_records_table()
+ensure_internship_past_column()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
