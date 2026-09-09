@@ -1086,6 +1086,19 @@ def get_module_records():
     conn.close()
     return jsonify([dict(r) for r in rows]), 200
 
+@app.route('/module-records-counts', methods=['GET'])
+@login_required
+def get_module_records_counts():
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT module, category, COUNT(*) as cnt FROM module_records GROUP BY module, category"
+    ).fetchall()
+    conn.close()
+    result = {}
+    for r in rows:
+        result.setdefault(r['module'], {})[r['category']] = r['cnt']
+    return jsonify(result), 200
+
 @app.route('/module-records', methods=['POST'])
 @login_required
 def add_module_record():
