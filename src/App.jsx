@@ -97,7 +97,171 @@ export default function App() {
   const [viewingStartup, setViewingStartup] = useState(null);
   const [pitchingStartup, setPitchingStartup] = useState(null);
   const [pitchForm, setPitchForm] = useState({ pitch_date: "", pitch_time: "", pitch_link: "" });
-  const [activeView, setActiveView] = useState("preincubation");
+  const [activeView, setActiveView] = useState("dashboard");
+  const [moduleCounts, setModuleCounts] = useState({});
+  const [expandedNav, setExpandedNav] = useState(null);
+
+  // --- Sidebar structure: which subcategories each top-level module has ---
+  const PRE_INCUBATION_SUBCATS = [
+    { key: "preincubation", label: "Preincubation Form" },
+    { key: "enquiry:preincubation", label: "Preincubation Enquiry" },
+    { key: "preIncubatedStartups", label: "Preincubated Startups" },
+    { key: "graduated:preincubation", label: "Graduated Preincubated Startups" },
+  ];
+  const INCUBATION_SUBCATS = [
+    { key: "incubation", label: "Incubation Form" },
+    { key: "enquiry:incubation", label: "Incubation Enquiry" },
+    { key: "incubatedStartups", label: "Incubated Startups" },
+    { key: "graduated:incubation", label: "Graduated Incubated Startups" },
+  ];
+  const INTERNSHIP_SUBCATS = [
+    { key: "internship", label: "Internship Form" },
+    { key: "enquiry:internship", label: "Internship Enquiry" },
+    { key: "internship_current", label: "Interns (Current)" },
+    { key: "internship_past", label: "Past Interns" },
+  ];
+  const MODULE_CONFIG = {
+    events: { label: "Events", subcats: [
+      { key: "upcoming", label: "Upcoming Events" },
+      { key: "past", label: "Past Events" },
+      { key: "registrations", label: "Event Registrations" },
+    ]},
+    mou: { label: "MoU", subcats: [
+      { key: "active", label: "Active MoUs" },
+      { key: "pending", label: "Pending / Draft MoUs" },
+      { key: "expired", label: "Expired MoUs" },
+    ]},
+    aim: { label: "AIM", subcats: [
+      { key: "grants", label: "Grants & Funding" },
+      { key: "compliance", label: "Compliance & Reporting" },
+      { key: "milestones", label: "Milestones" },
+    ]},
+    sisfs: { label: "SISFS Scheme", subcats: [
+      { key: "applications", label: "Applications" },
+      { key: "disbursements", label: "Disbursements" },
+      { key: "utilization", label: "Utilization Reports" },
+    ]},
+    coworking: { label: "Coworking Area", subcats: [
+      { key: "allotments", label: "Seat Allotments" },
+      { key: "requests", label: "Requests / Waitlist" },
+      { key: "usage", label: "Usage Log" },
+    ]},
+    facility: { label: "Device / Facility Use", subcats: [
+      { key: "inventory", label: "Equipment Inventory" },
+      { key: "bookings", label: "Booking Requests" },
+      { key: "usage", label: "Usage Log" },
+    ]},
+  };
+
+  // --- Generic module records: shared state used by every Enquiry/Events/MoU/AIM/SISFS/Coworking/Facility panel ---
+  const [moduleRecords, setModuleRecords] = useState([]);
+  const [moduleRecordsLoading, setModuleRecordsLoading] = useState(false);
+  const blankModuleForm = {
+    title: "", description: "", contactName: "", contactEmail: "", contactPhone: "",
+    recordDate: "", status: "", notes: "",
+  };
+  const [moduleForm, setModuleForm] = useState(blankModuleForm);
+  const [moduleAttachment, setModuleAttachment] = useState(null);
+  const [isSavingModuleRecord, setIsSavingModuleRecord] = useState(false);
+
+  const fetchModuleCounts = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/module-records-counts`, { credentials: "include" });
+      if (response.ok) setModuleCounts(await response.json());
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    await Promise.all([
+      fetchStartups(), fetchIncubationApplications(), fetchInternshipApplications(),
+      fetchAllIncubatedRecords(), fetchModuleCounts(),
+    ]);
+  };
+
+  const fetchModuleRecords = async (module, category) => {
+    setModuleRecordsLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/module-records?module=${encodeURIComponent(module)}&category=${encodeURIComponent(category)}`, { credentials: "include" });
+      if (response.ok) setModuleRecords(await response.json());
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setModuleRecordsLoading(false);
+    }
+  };
+
+  const saveModuleRecord = async (module, category) => {
+    if (isSavingModuleRecord) return;
+    if (!moduleForm.title.trim()) {
+      alert("Please enter a Title before saving.");
+      return;
+    }
+    setIsSavingModuleRecord(true);
+    try {
+      const data = new FormData();
+      data.append("module", module);
+      data.append("category", category);
+      Object.keys(moduleForm).forEach((key) => data.append(key, moduleForm[key]));
+      if (moduleAttachment) data.append("attachment", moduleAttachment);
+
+      const response = await fetch(`${BASE_URL}/module-records`, {
+        method: "POST", credentials: "include", body: data,
+      });
+      if (response.ok) {
+        setModuleForm(blankModuleForm);
+        setModuleAttachment(null);
+        await fetchModuleRecords(module, category);
+      } else {
+        alert("Failed to save record");
+      }
+    } catch (error) {
+      alert("Connection error");
+    } finally {
+      setIsSavingModuleRecord(false);
+    }
+  };
+
+  const deleteModuleRecord = async (id, module, category) => {
+    if (!window.confirm("Delete this record?")) return;
+    try {
+      const response = await fetch(`${BASE_URL}/module-records/${id}`, { method: "DELETE", credentials: "include" });
+      if (response.ok) await fetchModuleRecords(module, category);
+      else alert("Failed to delete");
+    } catch (error) {
+      alert("Connection error");
+    }
+  };
+
+  // Navigate to any sidebar sub-item: sets the view and, for generic module
+  // panels ("module:category"), fetches that panel's records too.
+  const goToView = (viewKey) => {
+    setActiveView(viewKey);
+    if (viewKey === "dashboard" && isLoggedIn) {
+      fetchDashboardData();
+    } else if (viewKey.includes(":")) {
+      const [mod, cat] = viewKey.split(":");
+      setModuleForm(blankModuleForm);
+      setModuleAttachment(null);
+      fetchModuleRecords(mod, cat);
+    } else if (viewKey === "incubation" && isLoggedIn) {
+      fetchIncubationApplications();
+    } else if (viewKey === "incubatedStartups" && isLoggedIn) {
+      fetchAllIncubatedRecords();
+    } else if (viewKey === "preIncubatedStartups" && isLoggedIn) {
+      fetchStartups();
+    } else if ((viewKey === "graduated:preincubation") && isLoggedIn) {
+      fetchStartups();
+    } else if ((viewKey === "graduated:incubation") && isLoggedIn) {
+      fetchStartupCrm();
+    } else if ((viewKey === "internship" || viewKey === "internship_current" || viewKey === "internship_past") && isLoggedIn) {
+      fetchInternshipApplications();
+    } else if (viewKey === "leaderboard" && isLoggedIn) {
+      fetchIncubationApplications();
+    }
+  };
+
   const [internshipForm, setInternshipForm] = useState({ name: "", email: "", phone: "", positions: [] });
   const [internshipResume, setInternshipResume] = useState(null);
   const [internshipPortfolio, setInternshipPortfolio] = useState(null);
@@ -189,7 +353,7 @@ export default function App() {
           setIsLoggedIn(data.logged_in);
           setCheckingAuth(false);
           if (data.logged_in) {
-            fetchStartups();
+            fetchDashboardData();
           }
         })
         .catch(() => setCheckingAuth(false));
@@ -224,7 +388,8 @@ export default function App() {
         if (res.ok) {
           setIsLoggedIn(true);
           setLoginError("");
-          fetchStartups();
+          setActiveView("dashboard");
+          fetchDashboardData();
         } else {
           setLoginError(result.error || "Login failed");
         }
@@ -314,6 +479,16 @@ export default function App() {
       }
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const togglePastIntern = async (id) => {
+    try {
+      const response = await fetch(`${BASE_URL}/toggle-past-intern/${id}`, { method: "POST", credentials: "include" });
+      if (response.ok) await fetchInternshipApplications();
+      else alert("Failed to update");
+    } catch (error) {
+      alert("Connection error");
     }
   };
 
@@ -1112,14 +1287,70 @@ export default function App() {
             <div>AIC MUJ<small>Incubation Foundation</small></div>
           </div>
           <div className="nav-label">Overview</div>
-          <div className={`nav-item ${activeView === "preincubation" ? "active" : ""}`} onClick={() => setActiveView("preincubation")}>Pre Incubation</div>
-          <div className={`nav-item ${activeView === "incubation" ? "active" : ""}`} onClick={() => { setActiveView("incubation"); if (isLoggedIn) fetchIncubationApplications(); }}>Incubation</div>
-          <div className={`nav-item ${activeView === "internship" ? "active" : ""}`} onClick={() => { setActiveView("internship"); if (isLoggedIn) fetchInternshipApplications(); }}>Internship</div>
-          <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => { setActiveView("leaderboard"); if (isLoggedIn) fetchIncubationApplications(); }}>🏆 Leaderboard</div>
-          <div className="nav-item">Startups</div>
-          <div className="nav-label">Records</div>
-          <div className={`nav-item ${activeView === "incubatedStartups" ? "active" : ""}`} onClick={() => { setActiveView("incubatedStartups"); if (isLoggedIn) fetchAllIncubatedRecords(); }}>Incubated Startups</div>
-          <div className={`nav-item ${activeView === "preIncubatedStartups" ? "active" : ""}`} onClick={() => { setActiveView("preIncubatedStartups"); if (isLoggedIn) fetchStartups(); }}>Pre Incubated Startups</div>
+          <div className={`nav-item ${activeView === "dashboard" ? "active" : ""}`} onClick={() => goToView("dashboard")}>📊 Dashboard</div>
+          <div className={`nav-item ${expandedNav === "preincubation_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "preincubation_group" ? null : "preincubation_group")}>
+            Pre Incubation {expandedNav === "preincubation_group" ? "▾" : "▸"}
+          </div>
+          {expandedNav === "preincubation_group" && PRE_INCUBATION_SUBCATS.map((sub) => (
+            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
+              {sub.label}
+            </div>
+          ))}
+
+          <div className={`nav-item ${expandedNav === "incubation_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "incubation_group" ? null : "incubation_group")}>
+            Incubation {expandedNav === "incubation_group" ? "▾" : "▸"}
+          </div>
+          {expandedNav === "incubation_group" && INCUBATION_SUBCATS.map((sub) => (
+            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
+              {sub.label}
+            </div>
+          ))}
+
+          <div className={`nav-item ${expandedNav === "internship_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "internship_group" ? null : "internship_group")}>
+            Internship {expandedNav === "internship_group" ? "▾" : "▸"}
+          </div>
+          {expandedNav === "internship_group" && INTERNSHIP_SUBCATS.map((sub) => (
+            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
+              {sub.label}
+            </div>
+          ))}
+
+          <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => goToView("leaderboard")}>🏆 Leaderboard</div>
+
+          <div className="nav-label">Programs & Schemes</div>
+          {["events", "mou", "aim", "sisfs"].map((modKey) => (
+            <div key={modKey}>
+              <div className={`nav-item ${expandedNav === modKey ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === modKey ? null : modKey)}>
+                {MODULE_CONFIG[modKey].label} {expandedNav === modKey ? "▾" : "▸"}
+              </div>
+              {expandedNav === modKey && MODULE_CONFIG[modKey].subcats.map((sub) => {
+                const viewKey = `${modKey}:${sub.key}`;
+                return (
+                  <div key={viewKey} className={`nav-item ${activeView === viewKey ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(viewKey)}>
+                    {sub.label}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          <div className="nav-label">Facilities</div>
+          {["coworking", "facility"].map((modKey) => (
+            <div key={modKey}>
+              <div className={`nav-item ${expandedNav === modKey ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === modKey ? null : modKey)}>
+                {MODULE_CONFIG[modKey].label} {expandedNav === modKey ? "▾" : "▸"}
+              </div>
+              {expandedNav === modKey && MODULE_CONFIG[modKey].subcats.map((sub) => {
+                const viewKey = `${modKey}:${sub.key}`;
+                return (
+                  <div key={viewKey} className={`nav-item ${activeView === viewKey ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(viewKey)}>
+                    {sub.label}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
           <div className="nav-label">Review</div>
           <div className="nav-item">Pending Review</div>
           <div className="nav-item">Approved</div>
@@ -1142,6 +1373,113 @@ export default function App() {
           <h1>Automated Pre-Incubation Management System</h1>
           <p>{isFormOnly ? "Student / Employee Application Portal" : "AIC Startup Portal — Application & Review Dashboard"}</p>
         </div>
+
+        {activeView === "dashboard" && isLoggedIn && (() => {
+          const mc = moduleCounts;
+          const cardColors = { pre: "#6C5CE7", inc: "#FF6B35", intern: "#F5A623", events: "#FF4D8D", mou: "#00B894", aim: "#6C5CE7", sisfs: "#FF6B35", cowork: "#00B894", facility: "#6C5CE7" };
+
+          const cards = [
+            {
+              key: "pre", icon: "🌱", title: "Pre Incubation", subtitle: "Idea-stage intake & nurturing",
+              items: [
+                { label: "Pre-Incubation Form", count: startups.length, view: "preincubation" },
+                { label: "Pre-Incubation Enquiry", count: (mc.enquiry && mc.enquiry.preincubation) || 0, view: "enquiry:preincubation" },
+                { label: "Pre-Incubated Startups", count: startups.filter((s) => s.status !== "Rejected").length, view: "preIncubatedStartups" },
+                { label: "Graduated Pre-Incubated Startups", count: startups.filter((s) => s.status === "Approved").length, view: "graduated:preincubation" },
+              ],
+            },
+            {
+              key: "inc", icon: "🏢", title: "Incubation", subtitle: "Early growth-stage startups",
+              items: [
+                { label: "Incubation Form", count: incubationApplications.length, view: "incubation" },
+                { label: "Incubation Enquiry", count: (mc.enquiry && mc.enquiry.incubation) || 0, view: "enquiry:incubation" },
+                { label: "Incubated Startups", count: startupCrmList.length, view: "incubatedStartups" },
+                { label: "Graduated Incubated Startups", count: startupCrmList.filter((s) => s.assigned_rm === "Scaling").length, view: "graduated:incubation" },
+              ],
+            },
+            {
+              key: "intern", icon: "🎓", title: "Internship", subtitle: "Student & talent pipeline",
+              items: [
+                { label: "Application Form", count: internshipApplications.length, view: "internship" },
+                { label: "Enquiry", count: (mc.enquiry && mc.enquiry.internship) || 0, view: "enquiry:internship" },
+                { label: "Active Interns", count: internshipApplications.filter((a) => a.is_past_intern !== "Yes").length, view: "internship_current" },
+                { label: "Past Interns", count: internshipApplications.filter((a) => a.is_past_intern === "Yes").length, view: "internship_past" },
+              ],
+            },
+            ...Object.keys(MODULE_CONFIG).map((modKey) => ({
+              key: modKey,
+              icon: { events: "📅", mou: "🤝", aim: "🎯", sisfs: "💰", coworking: "🏗️", facility: "🔧" }[modKey],
+              title: MODULE_CONFIG[modKey].label,
+              subtitle: {
+                events: "Bootcamps, talks & workshops", mou: "Partnerships & agreements",
+                aim: "Atal Innovation Mission compliance", sisfs: "Startup India Seed Fund",
+                coworking: "Seats & cabin management", facility: "Shared equipment usage",
+              }[modKey],
+              items: MODULE_CONFIG[modKey].subcats.map((sub) => ({
+                label: sub.label,
+                count: (mc[modKey] && mc[modKey][sub.key]) || 0,
+                view: `${modKey}:${sub.key}`,
+              })),
+            })),
+          ];
+
+          const totalStartups = startups.length + startupCrmList.length;
+          const pendingReview = startups.filter((s) => s.status === "Pending").length;
+          const activeMous = (mc.mou && mc.mou.active) || 0;
+          const totalEvents = ((mc.events && mc.events.upcoming) || 0) + ((mc.events && mc.events.past) || 0);
+
+          return (
+            <div className="card" style={{ background: "transparent", boxShadow: "none", padding: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "1.5rem" }}>
+                <div>
+                  <h2 style={{ margin: "0 0 4px 0" }}>Dashboard</h2>
+                  <p style={{ color: "#6B6B85", margin: 0, fontSize: "13px" }}>All programs, schemes and facilities at a glance.</p>
+                </div>
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  {[
+                    { label: "Total Startups", value: totalStartups },
+                    { label: "Pending Review", value: pendingReview },
+                    { label: "Active MoUs", value: activeMous },
+                    { label: "Total Events", value: totalEvents },
+                  ].map((stat) => (
+                    <div key={stat.label} style={{ background: "#FFF", borderRadius: "10px", padding: "10px 18px", textAlign: "center", minWidth: "110px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                      <div style={{ fontSize: "20px", fontWeight: "800" }}>{stat.value}</div>
+                      <div style={{ fontSize: "10px", color: "#6B6B85", textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "18px" }}>
+                {cards.map((card) => (
+                  <div key={card.key} style={{ background: "#FFF", borderRadius: "12px", borderTop: `4px solid ${cardColors[card.key] || "#6C5CE7"}`, padding: "18px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                      <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#F1F1F8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>
+                        {card.icon}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: "bold", fontSize: "15px" }}>{card.title}</div>
+                        <div style={{ fontSize: "11px", color: "#9797B5" }}>{card.subtitle}</div>
+                      </div>
+                    </div>
+                    <div>
+                      {card.items.map((item) => (
+                        <div
+                          key={item.view}
+                          onClick={() => goToView(item.view)}
+                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: "1px solid #F5F5FA", cursor: "pointer" }}
+                        >
+                          <span style={{ fontSize: "13px", color: "#3A3A55" }}>• {item.label}</span>
+                          <span style={{ fontSize: "12px", fontWeight: "bold", color: cardColors[card.key] || "#6C5CE7" }}>{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {activeView === "preincubation" && (
           <>
@@ -2007,11 +2345,12 @@ export default function App() {
                         <th style={{ padding: "12px" }}>Submitted</th>
                         <th style={{ padding: "12px" }}>Resume</th>
                         <th style={{ padding: "12px" }}>Portfolio</th>
+                        <th style={{ padding: "12px" }}>Past Intern</th>
                       </tr>
                     </thead>
                     <tbody>
                       {internshipApplications.length === 0 ? (
-                        <tr><td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No internship applications yet.</td></tr>
+                        <tr><td colSpan="9" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No internship applications yet.</td></tr>
                       ) : internshipApplications.map((a) => (
                         <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
                           <td style={{ padding: "12px" }}>{a.id}</td>
@@ -2030,6 +2369,19 @@ export default function App() {
                               <a href={`${BASE_URL}/download-internship-file/${a.id}/portfolio_filename`} target="_blank" rel="noreferrer">Download</a>
                             ) : "—"}
                           </td>
+                          <td style={{ padding: "12px" }}>
+                            <button
+                              onClick={() => togglePastIntern(a.id)}
+                              className="btn-small"
+                              style={{
+                                padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer",
+                                background: a.is_past_intern === "Yes" ? "#FFEBEE" : "#E8F5E9",
+                                color: a.is_past_intern === "Yes" ? "#C62828" : "#2E7D32",
+                              }}
+                            >
+                              {a.is_past_intern === "Yes" ? "Yes — Undo" : "Mark as Past"}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -2037,6 +2389,84 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeView === "internship_current" && (
+          <div className="card">
+            <div className="card-title">Internship — Current Interns</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>Applicants not yet marked as past interns.</p>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Name</th>
+                    <th style={{ padding: "12px" }}>Email</th>
+                    <th style={{ padding: "12px" }}>Phone</th>
+                    <th style={{ padding: "12px" }}>Position(s)</th>
+                    <th style={{ padding: "12px" }}>Submitted</th>
+                    <th style={{ padding: "12px" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {internshipApplications.filter((a) => a.is_past_intern !== "Yes").length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No current interns.</td></tr>
+                  ) : internshipApplications.filter((a) => a.is_past_intern !== "Yes").map((a) => (
+                    <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{a.name}</td>
+                      <td style={{ padding: "12px" }}>{a.email}</td>
+                      <td style={{ padding: "12px" }}>{a.phone}</td>
+                      <td style={{ padding: "12px" }}>{a.positions}</td>
+                      <td style={{ padding: "12px" }}>{a.submitted_at}</td>
+                      <td style={{ padding: "12px" }}>
+                        <button onClick={() => togglePastIntern(a.id)} className="btn-small" style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+                          Mark as Past Intern
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeView === "internship_past" && (
+          <div className="card">
+            <div className="card-title">Internship — Past Interns</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>Interns whose internship has ended.</p>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Name</th>
+                    <th style={{ padding: "12px" }}>Email</th>
+                    <th style={{ padding: "12px" }}>Phone</th>
+                    <th style={{ padding: "12px" }}>Position(s)</th>
+                    <th style={{ padding: "12px" }}>Submitted</th>
+                    <th style={{ padding: "12px" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {internshipApplications.filter((a) => a.is_past_intern === "Yes").length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No past interns yet.</td></tr>
+                  ) : internshipApplications.filter((a) => a.is_past_intern === "Yes").map((a) => (
+                    <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{a.name}</td>
+                      <td style={{ padding: "12px" }}>{a.email}</td>
+                      <td style={{ padding: "12px" }}>{a.phone}</td>
+                      <td style={{ padding: "12px" }}>{a.positions}</td>
+                      <td style={{ padding: "12px" }}>{a.submitted_at}</td>
+                      <td style={{ padding: "12px" }}>
+                        <button onClick={() => togglePastIntern(a.id)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+                          Undo
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -2099,6 +2529,184 @@ export default function App() {
           </div>
           , document.body
         )}
+
+        {activeView === "graduated:preincubation" && (
+          <div className="card">
+            <div className="card-title">Graduated Preincubated Startups</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+              Pre-Incubation applicants whose application was Approved.
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Startup Name</th>
+                    <th style={{ padding: "12px" }}>Founder</th>
+                    <th style={{ padding: "12px" }}>Sector</th>
+                    <th style={{ padding: "12px" }}>Stage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {startups.filter((s) => s.status === "Approved").length === 0 ? (
+                    <tr><td colSpan="4" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No graduated startups yet.</td></tr>
+                  ) : startups.filter((s) => s.status === "Approved").map((s) => (
+                    <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
+                      <td style={{ padding: "12px" }}>{s.name}</td>
+                      <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
+                      <td style={{ padding: "12px" }}>{s.startupStage}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeView === "graduated:incubation" && (
+          <div className="card">
+            <div className="card-title">Graduated Incubated Startups</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+              Incubated startups whose Stage is set to "Scaling".
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Startup Name</th>
+                    <th style={{ padding: "12px" }}>Founder</th>
+                    <th style={{ padding: "12px" }}>Sector</th>
+                    <th style={{ padding: "12px" }}>Incubation Stage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {startupCrmList.filter((s) => s.assigned_rm === "Scaling").length === 0 ? (
+                    <tr><td colSpan="4" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startups marked as "Scaling" yet.</td></tr>
+                  ) : startupCrmList.filter((s) => s.assigned_rm === "Scaling").map((s) => (
+                    <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startup_name}</td>
+                      <td style={{ padding: "12px" }}>{s.founder}</td>
+                      <td style={{ padding: "12px" }}>{s.sector}</td>
+                      <td style={{ padding: "12px" }}>{s.incubation_stage}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeView.includes(":") && (() => {
+          const [modKey, catKey] = activeView.split(":");
+          const cfg = MODULE_CONFIG[modKey];
+          const isEnquiry = modKey === "enquiry";
+          const enquiryLabels = { preincubation: "Preincubation Enquiry", incubation: "Incubation Enquiry", internship: "Internship Enquiry" };
+          const panelTitle = isEnquiry ? (enquiryLabels[catKey] || "Enquiry") : (cfg ? `${cfg.label} — ${cfg.subcats.find((s) => s.key === catKey)?.label || catKey}` : null);
+          if (!isEnquiry && !cfg) return null;
+
+          return (
+            <div className="card">
+              <div className="card-title">{panelTitle}</div>
+              <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+                Add a record below. All records for this section are listed underneath.
+              </p>
+
+              <div className="form-grid">
+                <div className="form-field">
+                  <label>{isEnquiry ? "Enquirer Name" : "Title"} *</label>
+                  <input type="text" value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} />
+                </div>
+                <div className="form-field">
+                  <label>Date</label>
+                  <input type="date" value={moduleForm.recordDate} onChange={(e) => setModuleForm({ ...moduleForm, recordDate: e.target.value })} />
+                </div>
+                <div className="form-field">
+                  <label>Status</label>
+                  <select value={moduleForm.status} onChange={(e) => setModuleForm({ ...moduleForm, status: e.target.value })}>
+                    <option value="">Select Status</option>
+                    <option>Open</option>
+                    <option>In Progress</option>
+                    <option>Completed</option>
+                    <option>Closed</option>
+                  </select>
+                </div>
+                {isEnquiry && (
+                  <>
+                    <div className="form-field">
+                      <label>Contact Email</label>
+                      <input type="email" value={moduleForm.contactEmail} onChange={(e) => setModuleForm({ ...moduleForm, contactEmail: e.target.value })} />
+                    </div>
+                    <div className="form-field">
+                      <label>Contact Phone</label>
+                      <input type="text" value={moduleForm.contactPhone} onChange={(e) => setModuleForm({ ...moduleForm, contactPhone: e.target.value })} />
+                    </div>
+                  </>
+                )}
+                <div className="form-field" style={{ gridColumn: "span 2" }}>
+                  <label>{isEnquiry ? "Enquiry / Message" : "Description"}</label>
+                  <input type="text" value={moduleForm.description} onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })} />
+                </div>
+                <div className="form-field" style={{ gridColumn: "span 2" }}>
+                  <label>Notes</label>
+                  <input type="text" value={moduleForm.notes} onChange={(e) => setModuleForm({ ...moduleForm, notes: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="file-upload" style={{ maxWidth: "400px", marginBottom: "1.5rem" }}>
+                <label>Attachment (optional)</label>
+                <input type="file" onChange={(e) => setModuleAttachment(e.target.files[0])} />
+                {moduleAttachment && <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {moduleAttachment.name}</div>}
+              </div>
+
+              <button className="submit-btn" onClick={() => saveModuleRecord(modKey, catKey)} disabled={isSavingModuleRecord} style={{ opacity: isSavingModuleRecord ? 0.7 : 1 }}>
+                {isSavingModuleRecord ? "Saving..." : "Save Record"}
+              </button>
+
+              <div style={{ overflowX: "auto", marginTop: "2rem" }}>
+                <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                      <th style={{ padding: "12px" }}>{isEnquiry ? "Enquirer" : "Title"}</th>
+                      <th style={{ padding: "12px" }}>Date</th>
+                      <th style={{ padding: "12px" }}>Status</th>
+                      <th style={{ padding: "12px" }}>{isEnquiry ? "Message" : "Description"}</th>
+                      <th style={{ padding: "12px" }}>Attachment</th>
+                      <th style={{ padding: "12px" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {moduleRecordsLoading ? (
+                      <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>Loading...</td></tr>
+                    ) : moduleRecords.length === 0 ? (
+                      <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No records yet.</td></tr>
+                    ) : moduleRecords.map((r) => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                        <td style={{ padding: "12px", fontWeight: "bold" }}>{r.title}</td>
+                        <td style={{ padding: "12px" }}>{r.record_date}</td>
+                        <td style={{ padding: "12px" }}>{r.status}</td>
+                        <td style={{ padding: "12px" }}>{r.description}</td>
+                        <td style={{ padding: "12px" }}>
+                          {r.attachment ? (
+                            <a href={`${BASE_URL}/download-module-attachment/${r.id}`} target="_blank" rel="noreferrer">Download</a>
+                          ) : "—"}
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <button
+                            onClick={() => deleteModuleRecord(r.id, modKey, catKey)}
+                            className="btn-small"
+                            style={{ background: "#FFEBEE", color: "#C62828", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {activeView === "leaderboard" && (
           <div className="card">
