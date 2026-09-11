@@ -957,11 +957,27 @@ def ensure_internship_table():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS internship_applications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, email TEXT, phone TEXT, positions TEXT,
-            resume_filename TEXT, portfolio_filename TEXT, submitted_at TEXT
+            name TEXT, email TEXT, phone TEXT,
+            department TEXT, year_of_study TEXT, preferred_role TEXT,
+            why_interested TEXT, skills_experience TEXT,
+            hosteller_status TEXT, willing_late TEXT,
+            cv_filename TEXT, submitted_at TEXT
         )
     ''')
     conn.commit()
+    conn.close()
+
+# Older DBs created before this field set existed: add any missing columns
+# without touching rows that are already there.
+def ensure_internship_columns():
+    conn = get_db_connection()
+    for col in ["department", "year_of_study", "preferred_role", "why_interested",
+                "skills_experience", "hosteller_status", "willing_late", "cv_filename"]:
+        try:
+            conn.execute(f"ALTER TABLE internship_applications ADD COLUMN {col} TEXT")
+            conn.commit()
+        except Exception:
+            pass  # column already exists, ignore
     conn.close()
 
 @app.route('/register-internship', methods=['POST'])
@@ -970,10 +986,25 @@ def register_internship():
         name = (request.form.get('name') or '').strip()
         email = (request.form.get('email') or '').strip()
         phone = (request.form.get('phone') or '').strip()
-        positions = request.form.get('positions', '')
+        department = (request.form.get('department') or '').strip()
+        year_of_study = (request.form.get('year_of_study') or '').strip()
+        preferred_role = (request.form.get('preferred_role') or '').strip()
+        why_interested = (request.form.get('why_interested') or '').strip()
+        skills_experience = (request.form.get('skills_experience') or '').strip()
+        hosteller_status = (request.form.get('hosteller_status') or '').strip()
+        willing_late = (request.form.get('willing_late') or '').strip()
 
-        if not name or not email or not phone:
-            return jsonify({"error": "Name, Email and Phone Number are required"}), 400
+        required_fields = {
+            "Full Name": name, "Email Address": email, "Phone Number": phone,
+            "Department/Course": department, "Year of Study": year_of_study,
+            "Preferred Role": preferred_role, "Why are you interested in this role": why_interested,
+            "Relevant skills or experience": skills_experience,
+            "Hosteller or Day Scholar": hosteller_status,
+            "Willingness to stay late": willing_late,
+        }
+        missing = [label for label, value in required_fields.items() if not value]
+        if missing:
+            return jsonify({"error": f"These fields are required: {', '.join(missing)}"}), 400
 
         email_pattern = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
         if not email_pattern.match(email):
@@ -982,28 +1013,26 @@ def register_internship():
         if not re.match(r"^[0-9]{10}$", phone):
             return jsonify({"error": "Please provide a valid 10-digit Phone Number"}), 400
 
-        resume = request.files.get('resume')
-        if not resume or not resume.filename:
-            return jsonify({"error": "Resume is required"}), 400
-
-        portfolio = request.files.get('portfolio')
-        if not portfolio or not portfolio.filename:
-            return jsonify({"error": "Portfolio is required"}), 400
-
         internship_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'internship_files')
         os.makedirs(internship_folder, exist_ok=True)
 
-        resume_filename = secure_filename(f"{name}_resume_{datetime.now().strftime('%Y%m%d%H%M%S')}_{resume.filename}")
-        resume.save(os.path.join(internship_folder, resume_filename))
-
-        portfolio_filename = secure_filename(f"{name}_portfolio_{datetime.now().strftime('%Y%m%d%H%M%S')}_{portfolio.filename}")
-        portfolio.save(os.path.join(internship_folder, portfolio_filename))
+        # CV / Portfolio upload is optional
+        cv = request.files.get('cv')
+        cv_filename = ""
+        if cv and cv.filename:
+            cv_filename = secure_filename(f"{name}_cv_{datetime.now().strftime('%Y%m%d%H%M%S')}_{cv.filename}")
+            cv.save(os.path.join(internship_folder, cv_filename))
 
         conn = get_db_connection()
         cursor = conn.execute('''
-            INSERT INTO internship_applications (name, email, phone, positions, resume_filename, portfolio_filename, submitted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (name, email, phone, positions, resume_filename, portfolio_filename, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            INSERT INTO internship_applications
+                (name, email, phone, department, year_of_study, preferred_role,
+                 why_interested, skills_experience, hosteller_status, willing_late,
+                 cv_filename, submitted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, email, phone, department, year_of_study, preferred_role,
+              why_interested, skills_experience, hosteller_status, willing_late,
+              cv_filename, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         new_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -1023,7 +1052,7 @@ def get_internship_applications():
 @app.route('/download-internship-file/<int:id>/<field>', methods=['GET'])
 @login_required
 def download_internship_file(id, field):
-    if field not in ["resume_filename", "portfolio_filename"]:
+    if field not in ["cv_filename"]:
         return jsonify({"error": "Invalid field"}), 400
     conn = get_db_connection()
     row = conn.execute(f"SELECT {field} FROM internship_applications WHERE id = ?", (id,)).fetchone()
@@ -1037,7 +1066,7 @@ def download_internship_file(id, field):
 # on the record to match, so a random ID guess alone can't pull someone else's file.
 @app.route('/download-internship-file-public/<int:id>/<field>', methods=['GET'])
 def download_internship_file_public(id, field):
-    if field not in ["resume_filename", "portfolio_filename"]:
+    if field not in ["cv_filename"]:
         return jsonify({"error": "Invalid field"}), 400
     email = (request.args.get('email') or '').strip().lower()
     conn = get_db_connection()
@@ -1191,6 +1220,7 @@ ensure_startup_crm_extra_columns()
 ensure_founder_crm_table()
 ensure_document_repository_table()
 ensure_internship_table()
+ensure_internship_columns()
 ensure_module_records_table()
 ensure_internship_past_column()
 

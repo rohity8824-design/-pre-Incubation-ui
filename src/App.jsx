@@ -262,9 +262,12 @@ export default function App() {
     }
   };
 
-  const [internshipForm, setInternshipForm] = useState({ name: "", email: "", phone: "", positions: [] });
-  const [internshipResume, setInternshipResume] = useState(null);
-  const [internshipPortfolio, setInternshipPortfolio] = useState(null);
+  const [internshipForm, setInternshipForm] = useState({
+    name: "", email: "", phone: "", department: "", yearOfStudy: "",
+    preferredRole: "", whyInterested: "", skillsExperience: "",
+    hostellerStatus: "", willingLate: "",
+  });
+  const [internshipCv, setInternshipCv] = useState(null);
   const [isSubmittingInternship, setIsSubmittingInternship] = useState(false);
   const [internshipApplications, setInternshipApplications] = useState([]);
   const [showInternshipReceipt, setShowInternshipReceipt] = useState(false);
@@ -496,41 +499,49 @@ export default function App() {
     setInternshipForm({ ...internshipForm, [e.target.name]: e.target.value });
   };
 
-  const handleInternshipPositionToggle = (value) => {
-    setInternshipForm((prev) => {
-      const exists = prev.positions.includes(value);
-      const updated = exists ? prev.positions.filter((v) => v !== value) : [...prev.positions, value];
-      return { ...prev, positions: updated };
-    });
-  };
-
   const handleInternshipSubmit = async (e) => {
     e.preventDefault();
     if (isSubmittingInternship) return;
 
     if (!internshipForm.name.trim()) {
-      alert("Please enter your Name.");
+      alert("Please enter your Full Name.");
       return;
     }
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(internshipForm.email.trim())) {
-      alert("Please enter a valid Email address.");
+      alert("Please enter a valid Email Address.");
       return;
     }
     if (!/^[0-9]{10}$/.test(internshipForm.phone.trim())) {
       alert("Please enter a valid 10-digit Phone Number.");
       return;
     }
-    if (internshipForm.positions.length === 0) {
-      alert("Please select at least one position you're interested in.");
+    if (!internshipForm.department.trim()) {
+      alert("Please enter your Department/Course.");
       return;
     }
-    if (!internshipResume) {
-      alert("Please upload your Resume.");
+    if (!internshipForm.yearOfStudy) {
+      alert("Please select your Year of Study.");
       return;
     }
-    if (!internshipPortfolio) {
-      alert("Please upload your Portfolio.");
+    if (!internshipForm.preferredRole) {
+      alert("Please select your Preferred Role.");
+      return;
+    }
+    if (!internshipForm.whyInterested.trim()) {
+      alert("Please tell us why you're interested in this role.");
+      return;
+    }
+    if (!internshipForm.skillsExperience.trim()) {
+      alert("Please tell us about your relevant skills or experience.");
+      return;
+    }
+    if (!internshipForm.hostellerStatus) {
+      alert("Please select whether you're a Hosteller or a Day Scholar.");
+      return;
+    }
+    if (!internshipForm.willingLate) {
+      alert("Please select if you're willing to stay late for work if required.");
       return;
     }
 
@@ -540,9 +551,14 @@ export default function App() {
       data.append("name", internshipForm.name);
       data.append("email", internshipForm.email);
       data.append("phone", internshipForm.phone);
-      data.append("positions", internshipForm.positions.join(", "));
-      data.append("resume", internshipResume);
-      if (internshipPortfolio) data.append("portfolio", internshipPortfolio);
+      data.append("department", internshipForm.department);
+      data.append("year_of_study", internshipForm.yearOfStudy);
+      data.append("preferred_role", internshipForm.preferredRole);
+      data.append("why_interested", internshipForm.whyInterested);
+      data.append("skills_experience", internshipForm.skillsExperience);
+      data.append("hosteller_status", internshipForm.hostellerStatus);
+      data.append("willing_late", internshipForm.willingLate);
+      if (internshipCv) data.append("cv", internshipCv);
 
       const response = await fetch(`${BASE_URL}/register-internship`, {
         method: "POST", credentials: "include", body: data,
@@ -554,16 +570,20 @@ export default function App() {
           name: internshipForm.name,
           email: internshipForm.email,
           phone: internshipForm.phone,
-          positions: internshipForm.positions.join(", "),
+          department: internshipForm.department,
+          yearOfStudy: internshipForm.yearOfStudy,
+          preferredRole: internshipForm.preferredRole,
           date: new Date().toLocaleDateString(),
-          resumeName: internshipResume ? internshipResume.name : "",
-          portfolioName: internshipPortfolio ? internshipPortfolio.name : "",
+          cvName: internshipCv ? internshipCv.name : "",
         });
         setShowInternshipReceipt(true);
 
-        setInternshipForm({ name: "", email: "", phone: "", positions: [] });
-        setInternshipResume(null);
-        setInternshipPortfolio(null);
+        setInternshipForm({
+          name: "", email: "", phone: "", department: "", yearOfStudy: "",
+          preferredRole: "", whyInterested: "", skillsExperience: "",
+          hostellerStatus: "", willingLate: "",
+        });
+        setInternshipCv(null);
         if (isLoggedIn) await fetchInternshipApplications();
       } else {
         alert(result.error);
@@ -1822,182 +1842,6 @@ export default function App() {
             </button>
           </div>
 
-          {!isFormOnly && (
-            <div className="card">
-              <div className="card-title">Admin Dashboard Dashboard</div>
-
-              {checkingAuth ? (
-                <p style={{ padding: "1rem", color: "#6B6B85" }}>Checking access...</p>
-              ) : !isLoggedIn ? (
-                <form onSubmit={handleLogin} style={{maxWidth: "320px", display: "flex", flexDirection: "column", gap: "12px", padding: "1rem"}}>
-                  <div className="form-field">
-                    <label>Username</label>
-                    <input
-                      type="text"
-                      placeholder="Enter admin username"
-                      value={loginForm.username}
-                      onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
-                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label>Password</label>
-                    <input
-                      type="password"
-                      placeholder="Enter password"
-                      value={loginForm.password}
-                      onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
-                    />
-                  </div>
-                  {loginError && <p style={{ fontSize: "12px", color: "#FF4D8D" }}>{loginError}</p>}
-                  <button type="submit" className="submit-btn" style={{ marginTop: "6px" }}>Login as Admin</button>
-                </form>
-              ) : (
-                <div style={{ width: "100%", marginTop: "1rem" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
-                    <input
-                      type="text"
-                      placeholder="Search by startup name, founder, or email..."
-                      value={startupSearch}
-                      onChange={(e) => setStartupSearch(e.target.value)}
-                      style={{ flex: "1", minWidth: "220px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
-                    />
-                    <select
-                      value={startupSectorFilter}
-                      onChange={(e) => setStartupSectorFilter(e.target.value)}
-                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
-                    >
-                      <option value="">All Sectors</option>
-                      <option>Agritech</option>
-                      <option>Healthtech</option>
-                      <option>Edtech</option>
-                      <option>Fintech</option>
-                    </select>
-                    <select
-                      value={startupStatusFilter}
-                      onChange={(e) => setStartupStatusFilter(e.target.value)}
-                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
-                    >
-                      <option value="">All Status</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Rejected">Rejected</option>
-                    </select>
-                    {(startupSearch || startupSectorFilter || startupStatusFilter) && (
-                      <button
-                        onClick={() => { setStartupSearch(""); setStartupSectorFilter(""); setStartupStatusFilter(""); }}
-                        className="btn-small"
-                        style={{ background: "#EFEFEF", color: "#161629", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
-                      >
-                        Clear Filters
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ overflowX: "auto", width: "100%" }}>
-                  <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                    <thead>
-                      <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
-                        <th style={{ padding: "12px" }}>ID</th>
-                        <th style={{ padding: "12px" }}>Startup Name</th>
-                        <th style={{ padding: "12px" }}>Founder</th>
-                        <th style={{ padding: "12px" }}>Sector</th>
-                        <th style={{ padding: "12px" }}>Stage</th>
-                        <th style={{ padding: "12px" }}>Status</th>
-                        <th style={{ padding: "12px" }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const filteredStartups = startups.filter((s) => {
-                          const q = startupSearch.trim().toLowerCase();
-                          const matchesSearch = q === "" ||
-                            (s.startupName || "").toLowerCase().includes(q) ||
-                            (s.name || "").toLowerCase().includes(q) ||
-                            (s.email || "").toLowerCase().includes(q);
-                          const matchesSector = startupSectorFilter === "" || s.sector === startupSectorFilter;
-                          const matchesStatus = startupStatusFilter === "" || (s.status || "Pending") === startupStatusFilter;
-                          return matchesSearch && matchesSector && matchesStatus;
-                        });
-                        if (filteredStartups.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>
-                                {startups.length === 0 ? "No applications found." : "No applications match your search/filters."}
-                              </td>
-                            </tr>
-                          );
-                        }
-                        return filteredStartups.map((s) => (
-                        <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
-                          <td style={{ padding: "12px" }}>{s.id}</td>
-                          <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
-                          <td style={{ padding: "12px" }}>{s.name}</td>
-                          <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
-                          <td style={{ padding: "12px" }}>{s.startupStage}</td>
-                          <td style={{ padding: "12px" }}>
-                            <span className={`status-pill ${s.status?.toLowerCase()}`} style={{
-                              padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
-                              color: s.status === "Approved" ? "#2E7D32" : s.status === "Rejected" ? "#C62828" : "#F57F17",
-                              background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
-                            }}>{s.status || "Pending"}</span>
-                          </td>
-                          <td style={{ padding: "12px" }}>
-                            <div className="actions-cell">
-                              <button onClick={() => setViewingStartup(s)} className="big-action-btn view">
-                                <span className="btn-label">View</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-                                </span>
-                              </button>
-                              <button onClick={() => openPitchModal(s)} className="big-action-btn pitch">
-                                <span className="btn-label">Pitch</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
-                                </span>
-                              </button>
-                              <button onClick={() => downloadFolder(s.id)} className="big-action-btn docs">
-                                <span className="btn-label">Docs</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                                </span>
-                              </button>
-                              <button onClick={() => openEvaluationModal(s)} className="big-action-btn evaluate">
-                                <span className="btn-label">Evaluate</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                                </span>
-                              </button>
-                              <button onClick={() => toggleCertificate(s.id)} className="big-action-btn cert">
-                                <span className="btn-label">{s.has_certificate ? "Cert ✓" : "No Cert"}</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>
-                                </span>
-                              </button>
-                              <button onClick={() => updateStatus(s.id, "Approved")} disabled={actionLoadingId === s.id} className="big-action-btn approve">
-                                <span className="btn-label">Approve</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                              </button>
-                              <button onClick={() => updateStatus(s.id, "Rejected")} disabled={actionLoadingId === s.id} className="big-action-btn reject">
-                                <span className="btn-label">Reject</span>
-                                <span className="btn-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
           </>
         )}
 
@@ -2290,26 +2134,74 @@ export default function App() {
               <em>Benefits: Work from home · Flexible Timings · Experience Certificate · Experienced individuals preferred</em></p>
             </div>
 
+            <div className="card-title" style={{ marginBottom: "1rem" }}>AIC Interns Student Interview Application</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>Apply now to be part of an exciting team and enhance your skills.</p>
+
             <div className="form-grid">
               <div className="form-field">
-                <label>Name <span style={{ color: "red" }}>*</span></label>
-                <input type="text" name="name" value={internshipForm.name} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="First and last name"/>
+                <label>Full Name <span style={{ color: "red" }}>*</span></label>
+                <input type="text" name="name" value={internshipForm.name} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="Your answer"/>
               </div>
               <div className="form-field">
-                <label>Email <span style={{ color: "red" }}>*</span></label>
-                <input type="email" name="email" value={internshipForm.email} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
+                <label>Email Address <span style={{ color: "red" }}>*</span></label>
+                <input type="email" name="email" value={internshipForm.email} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="Your answer"/>
               </div>
               <div className="form-field">
                 <label>Phone Number <span style={{ color: "red" }}>*</span></label>
                 <input type="tel" name="phone" value={internshipForm.phone} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="10-digit number"/>
               </div>
+              <div className="form-field">
+                <label>Department/Course <span style={{ color: "red" }}>*</span></label>
+                <input type="text" name="department" value={internshipForm.department} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="Your answer"/>
+              </div>
             </div>
 
             <div style={{ margin: "1rem 0" }}>
-              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Which position(s) are you interested in? <span style={{ color: "red" }}>*</span></label>
-              {["GRAPHIC DESIGN INTERN", "WEBSITE DEVELOPER INTERN", "SOCIAL MEDIA MARKETING INTERN", "CONTENT WRITER"].map((opt) => (
-                <label key={opt} style={{ marginRight: "16px", display: "inline-flex", alignItems: "center", gap: "4px", marginBottom: "8px" }}>
-                  <input type="checkbox" checked={internshipForm.positions.includes(opt)} onChange={() => handleInternshipPositionToggle(opt)} disabled={isSubmittingInternship}/>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Year of Study <span style={{ color: "red" }}>*</span></label>
+              {["First Year", "Second Year", "Third Year", "Fourth Year", "Fifth Year"].map((opt) => (
+                <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <input type="radio" name="yearOfStudy" value={opt} checked={internshipForm.yearOfStudy === opt} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ margin: "1rem 0" }}>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Preferred Role <span style={{ color: "red" }}>*</span></label>
+              {["Operations", "Marketing", "Tech", "Design", "Content", "HR"].map((opt) => (
+                <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <input type="radio" name="preferredRole" value={opt} checked={internshipForm.preferredRole === opt} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+
+            <div className="form-grid">
+              <div className="form-field" style={{ gridColumn: "span 2" }}>
+                <label>Why are you interested in this role? <span style={{ color: "red" }}>*</span></label>
+                <input type="text" name="whyInterested" value={internshipForm.whyInterested} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="Your answer"/>
+              </div>
+              <div className="form-field" style={{ gridColumn: "span 2" }}>
+                <label>What relevant skills or experience do you have? <span style={{ color: "red" }}>*</span></label>
+                <input type="text" name="skillsExperience" value={internshipForm.skillsExperience} onChange={handleInternshipChange} disabled={isSubmittingInternship} placeholder="Your answer"/>
+              </div>
+            </div>
+
+            <div style={{ margin: "1rem 0" }}>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Are you a hosteller or a day scholar? <span style={{ color: "red" }}>*</span></label>
+              {["Hosteller", "Day Scholar"].map((opt) => (
+                <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <input type="radio" name="hostellerStatus" value={opt} checked={internshipForm.hostellerStatus === opt} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
+                  {opt}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ margin: "1rem 0" }}>
+              <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>Are you willing to stay late for work if required? <span style={{ color: "red" }}>*</span></label>
+              {["Yes", "No"].map((opt) => (
+                <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <input type="radio" name="willingLate" value={opt} checked={internshipForm.willingLate === opt} onChange={handleInternshipChange} disabled={isSubmittingInternship}/>
                   {opt}
                 </label>
               ))}
@@ -2317,12 +2209,8 @@ export default function App() {
 
             <div className="file-grid">
               <div className="file-upload">
-                <label>Submit your resume <span style={{ color: "red" }}>*</span></label>
-                <input type="file" accept=".pdf,.doc,.docx" disabled={isSubmittingInternship} onChange={(e) => setInternshipResume(e.target.files[0])}/>
-              </div>
-              <div className="file-upload">
-                <label>Submit your portfolio <span style={{ color: "red" }}>*</span></label>
-                <input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" disabled={isSubmittingInternship} onChange={(e) => setInternshipPortfolio(e.target.files[0])}/>
+                <label>Upload Your CV / Portfolio (Optional)</label>
+                <input type="file" accept=".pdf,.doc,.docx" disabled={isSubmittingInternship} onChange={(e) => setInternshipCv(e.target.files[0])}/>
               </div>
             </div>
 
@@ -2341,32 +2229,34 @@ export default function App() {
                         <th style={{ padding: "12px" }}>Name</th>
                         <th style={{ padding: "12px" }}>Email</th>
                         <th style={{ padding: "12px" }}>Phone</th>
-                        <th style={{ padding: "12px" }}>Position(s)</th>
+                        <th style={{ padding: "12px" }}>Department/Course</th>
+                        <th style={{ padding: "12px" }}>Year</th>
+                        <th style={{ padding: "12px" }}>Preferred Role</th>
+                        <th style={{ padding: "12px" }}>Hosteller/Day Scholar</th>
+                        <th style={{ padding: "12px" }}>Stay Late OK?</th>
                         <th style={{ padding: "12px" }}>Submitted</th>
-                        <th style={{ padding: "12px" }}>Resume</th>
-                        <th style={{ padding: "12px" }}>Portfolio</th>
+                        <th style={{ padding: "12px" }}>CV/Portfolio</th>
                         <th style={{ padding: "12px" }}>Past Intern</th>
                       </tr>
                     </thead>
                     <tbody>
                       {internshipApplications.length === 0 ? (
-                        <tr><td colSpan="9" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No internship applications yet.</td></tr>
+                        <tr><td colSpan="12" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No internship applications yet.</td></tr>
                       ) : internshipApplications.map((a) => (
                         <tr key={a.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
                           <td style={{ padding: "12px" }}>{a.id}</td>
                           <td style={{ padding: "12px", fontWeight: "bold" }}>{a.name}</td>
                           <td style={{ padding: "12px" }}>{a.email}</td>
                           <td style={{ padding: "12px" }}>{a.phone}</td>
-                          <td style={{ padding: "12px" }}>{a.positions}</td>
+                          <td style={{ padding: "12px" }}>{a.department}</td>
+                          <td style={{ padding: "12px" }}>{a.year_of_study}</td>
+                          <td style={{ padding: "12px" }}>{a.preferred_role}</td>
+                          <td style={{ padding: "12px" }}>{a.hosteller_status}</td>
+                          <td style={{ padding: "12px" }}>{a.willing_late}</td>
                           <td style={{ padding: "12px" }}>{a.submitted_at}</td>
                           <td style={{ padding: "12px" }}>
-                            {a.resume_filename ? (
-                              <a href={`${BASE_URL}/download-internship-file/${a.id}/resume_filename`} target="_blank" rel="noreferrer">Download</a>
-                            ) : "—"}
-                          </td>
-                          <td style={{ padding: "12px" }}>
-                            {a.portfolio_filename ? (
-                              <a href={`${BASE_URL}/download-internship-file/${a.id}/portfolio_filename`} target="_blank" rel="noreferrer">Download</a>
+                            {a.cv_filename ? (
+                              <a href={`${BASE_URL}/download-internship-file/${a.id}/cv_filename`} target="_blank" rel="noreferrer">Download</a>
                             ) : "—"}
                           </td>
                           <td style={{ padding: "12px" }}>
@@ -2403,7 +2293,7 @@ export default function App() {
                     <th style={{ padding: "12px" }}>Name</th>
                     <th style={{ padding: "12px" }}>Email</th>
                     <th style={{ padding: "12px" }}>Phone</th>
-                    <th style={{ padding: "12px" }}>Position(s)</th>
+                    <th style={{ padding: "12px" }}>Preferred Role</th>
                     <th style={{ padding: "12px" }}>Submitted</th>
                     <th style={{ padding: "12px" }}>Action</th>
                   </tr>
@@ -2416,7 +2306,7 @@ export default function App() {
                       <td style={{ padding: "12px", fontWeight: "bold" }}>{a.name}</td>
                       <td style={{ padding: "12px" }}>{a.email}</td>
                       <td style={{ padding: "12px" }}>{a.phone}</td>
-                      <td style={{ padding: "12px" }}>{a.positions}</td>
+                      <td style={{ padding: "12px" }}>{a.preferred_role}</td>
                       <td style={{ padding: "12px" }}>{a.submitted_at}</td>
                       <td style={{ padding: "12px" }}>
                         <button onClick={() => togglePastIntern(a.id)} className="btn-small" style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
@@ -2442,7 +2332,7 @@ export default function App() {
                     <th style={{ padding: "12px" }}>Name</th>
                     <th style={{ padding: "12px" }}>Email</th>
                     <th style={{ padding: "12px" }}>Phone</th>
-                    <th style={{ padding: "12px" }}>Position(s)</th>
+                    <th style={{ padding: "12px" }}>Preferred Role</th>
                     <th style={{ padding: "12px" }}>Submitted</th>
                     <th style={{ padding: "12px" }}>Action</th>
                   </tr>
@@ -2455,7 +2345,7 @@ export default function App() {
                       <td style={{ padding: "12px", fontWeight: "bold" }}>{a.name}</td>
                       <td style={{ padding: "12px" }}>{a.email}</td>
                       <td style={{ padding: "12px" }}>{a.phone}</td>
-                      <td style={{ padding: "12px" }}>{a.positions}</td>
+                      <td style={{ padding: "12px" }}>{a.preferred_role}</td>
                       <td style={{ padding: "12px" }}>{a.submitted_at}</td>
                       <td style={{ padding: "12px" }}>
                         <button onClick={() => togglePastIntern(a.id)} className="btn-small" style={{ background: "#EFEFEF", color: "#161629", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
@@ -2495,32 +2385,26 @@ export default function App() {
                 <p><strong>Email: </strong>{internshipReceiptData.email}</p>
                 <p><strong>Phone: </strong>{internshipReceiptData.phone}</p>
                 <p><strong>Date: </strong>{internshipReceiptData.date}</p>
-                <p className="full"><strong>Position(s) Applied: </strong>{internshipReceiptData.positions}</p>
+                <p><strong>Department/Course: </strong>{internshipReceiptData.department}</p>
+                <p><strong>Year of Study: </strong>{internshipReceiptData.yearOfStudy}</p>
+                <p className="full"><strong>Preferred Role: </strong>{internshipReceiptData.preferredRole}</p>
               </div>
 
-              <div style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "16px" }}>
-                <h3 style={{ margin: "0 0 12px 0", fontSize: "15px" }}>Attached Documents</h3>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F1F1F8" }}>
-                  <span>📄 Resume — {internshipReceiptData.resumeName}</span>
-                  <a
-                    className="no-print"
-                    href={`${BASE_URL}/download-internship-file-public/${internshipReceiptData.id}/resume_filename?email=${encodeURIComponent(internshipReceiptData.email)}`}
-                    target="_blank" rel="noreferrer"
-                  >
-                    Download
-                  </a>
+              {internshipReceiptData.cvName && (
+                <div style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "16px" }}>
+                  <h3 style={{ margin: "0 0 12px 0", fontSize: "15px" }}>Attached Documents</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
+                    <span>📄 CV/Portfolio — {internshipReceiptData.cvName}</span>
+                    <a
+                      className="no-print"
+                      href={`${BASE_URL}/download-internship-file-public/${internshipReceiptData.id}/cv_filename?email=${encodeURIComponent(internshipReceiptData.email)}`}
+                      target="_blank" rel="noreferrer"
+                    >
+                      Download
+                    </a>
+                  </div>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
-                  <span>📄 Portfolio — {internshipReceiptData.portfolioName}</span>
-                  <a
-                    className="no-print"
-                    href={`${BASE_URL}/download-internship-file-public/${internshipReceiptData.id}/portfolio_filename?email=${encodeURIComponent(internshipReceiptData.email)}`}
-                    target="_blank" rel="noreferrer"
-                  >
-                    Download
-                  </a>
-                </div>
-              </div>
+              )}
 
               <p style={{ fontSize: "12px", color: "#9797B5", marginTop: "1rem" }}>
                 Keep this confirmation for your records. Our team will reach out to you via email regarding the next steps.
@@ -2596,7 +2480,183 @@ export default function App() {
           </div>
         )}
 
-        {activeView.includes(":") && (() => {
+        {activeView === "enquiry:preincubation" && (
+            <div className="card">
+              <div className="card-title">Preincubation Enquiry — Pre-Incubation Form Applications</div>
+
+              {checkingAuth ? (
+                <p style={{ padding: "1rem", color: "#6B6B85" }}>Checking access...</p>
+              ) : !isLoggedIn ? (
+                <form onSubmit={handleLogin} style={{maxWidth: "320px", display: "flex", flexDirection: "column", gap: "12px", padding: "1rem"}}>
+                  <div className="form-field">
+                    <label>Username</label>
+                    <input
+                      type="text"
+                      placeholder="Enter admin username"
+                      value={loginForm.username}
+                      onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter password"
+                      value={loginForm.password}
+                      onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                  </div>
+                  {loginError && <p style={{ fontSize: "12px", color: "#FF4D8D" }}>{loginError}</p>}
+                  <button type="submit" className="submit-btn" style={{ marginTop: "6px" }}>Login as Admin</button>
+                </form>
+              ) : (
+                <div style={{ width: "100%", marginTop: "1rem" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
+                    <input
+                      type="text"
+                      placeholder="Search by startup name, founder, or email..."
+                      value={startupSearch}
+                      onChange={(e) => setStartupSearch(e.target.value)}
+                      style={{ flex: "1", minWidth: "220px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                    <select
+                      value={startupSectorFilter}
+                      onChange={(e) => setStartupSectorFilter(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    >
+                      <option value="">All Sectors</option>
+                      <option>Agritech</option>
+                      <option>Healthtech</option>
+                      <option>Edtech</option>
+                      <option>Fintech</option>
+                    </select>
+                    <select
+                      value={startupStatusFilter}
+                      onChange={(e) => setStartupStatusFilter(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    >
+                      <option value="">All Status</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                    {(startupSearch || startupSectorFilter || startupStatusFilter) && (
+                      <button
+                        onClick={() => { setStartupSearch(""); setStartupSectorFilter(""); setStartupStatusFilter(""); }}
+                        className="btn-small"
+                        style={{ background: "#EFEFEF", color: "#161629", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ overflowX: "auto", width: "100%" }}>
+                  <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                        <th style={{ padding: "12px" }}>ID</th>
+                        <th style={{ padding: "12px" }}>Startup Name</th>
+                        <th style={{ padding: "12px" }}>Founder</th>
+                        <th style={{ padding: "12px" }}>Sector</th>
+                        <th style={{ padding: "12px" }}>Stage</th>
+                        <th style={{ padding: "12px" }}>Status</th>
+                        <th style={{ padding: "12px" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const filteredStartups = startups.filter((s) => {
+                          const q = startupSearch.trim().toLowerCase();
+                          const matchesSearch = q === "" ||
+                            (s.startupName || "").toLowerCase().includes(q) ||
+                            (s.name || "").toLowerCase().includes(q) ||
+                            (s.email || "").toLowerCase().includes(q);
+                          const matchesSector = startupSectorFilter === "" || s.sector === startupSectorFilter;
+                          const matchesStatus = startupStatusFilter === "" || (s.status || "Pending") === startupStatusFilter;
+                          return matchesSearch && matchesSector && matchesStatus;
+                        });
+                        if (filteredStartups.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>
+                                {startups.length === 0 ? "No applications found." : "No applications match your search/filters."}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return filteredStartups.map((s) => (
+                        <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                          <td style={{ padding: "12px" }}>{s.id}</td>
+                          <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
+                          <td style={{ padding: "12px" }}>{s.name}</td>
+                          <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
+                          <td style={{ padding: "12px" }}>{s.startupStage}</td>
+                          <td style={{ padding: "12px" }}>
+                            <span className={`status-pill ${s.status?.toLowerCase()}`} style={{
+                              padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
+                              color: s.status === "Approved" ? "#2E7D32" : s.status === "Rejected" ? "#C62828" : "#F57F17",
+                              background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
+                            }}>{s.status || "Pending"}</span>
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <div className="actions-cell">
+                              <button onClick={() => setViewingStartup(s)} className="big-action-btn view">
+                                <span className="btn-label">View</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => openPitchModal(s)} className="big-action-btn pitch">
+                                <span className="btn-label">Pitch</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => downloadFolder(s.id)} className="big-action-btn docs">
+                                <span className="btn-label">Docs</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => openEvaluationModal(s)} className="big-action-btn evaluate">
+                                <span className="btn-label">Evaluate</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => toggleCertificate(s.id)} className="big-action-btn cert">
+                                <span className="btn-label">{s.has_certificate ? "Cert ✓" : "No Cert"}</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => updateStatus(s.id, "Approved")} disabled={actionLoadingId === s.id} className="big-action-btn approve">
+                                <span className="btn-label">Approve</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => updateStatus(s.id, "Rejected")} disabled={actionLoadingId === s.id} className="big-action-btn reject">
+                                <span className="btn-label">Reject</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                  </div>
+                </div>
+              )}
+            </div>
+        )}
+        {activeView !== "enquiry:preincubation" && activeView.includes(":") && (() => {
           const [modKey, catKey] = activeView.split(":");
           const cfg = MODULE_CONFIG[modKey];
           const isEnquiry = modKey === "enquiry";
