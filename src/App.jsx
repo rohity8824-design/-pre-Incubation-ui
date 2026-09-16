@@ -495,6 +495,16 @@ export default function App() {
     }
   };
 
+  const toggleStartupActive = async (id) => {
+    try {
+      const response = await fetch(`${BASE_URL}/toggle-startup-active/${id}`, { method: "POST", credentials: "include" });
+      if (response.ok) await fetchStartups();
+      else alert("Failed to update");
+    } catch (error) {
+      alert("Connection error");
+    }
+  };
+
   const handleInternshipChange = (e) => {
     setInternshipForm({ ...internshipForm, [e.target.name]: e.target.value });
   };
@@ -1503,70 +1513,6 @@ export default function App() {
 
         {activeView === "preincubation" && (
           <>
-          {!isFormOnly && isLoggedIn && (
-            <>
-              <div className="stats">
-                <div className="stat">
-                  <div className="stat-num">{startups.length}</div>
-                  <div className="stat-label">Total Applications</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-num" style={{color:"#F57F17"}}>
-                    {startups.filter(s => s.status === "Pending").length}
-                  </div>
-                  <div className="stat-label">Pending Review</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-num" style={{color:"#2E7D32"}}>
-                    {startups.filter(s => s.status === "Approved").length}
-                  </div>
-                  <div className="stat-label">Approved</div>
-                </div>
-                <div className="stat">
-                  <div className="stat-num" style={{color:"#C62828"}}>
-                    {startups.filter(s => s.status === "Rejected").length}
-                  </div>
-                  <div className="stat-label">Rejected</div>
-                </div>
-              </div>
-
-              <div className="grid-2">
-                <div className="panel">
-                  <div className="panel-head"><h3>Applications by Sector</h3></div>
-                  <div className="bars">
-                    {Object.keys(sectorCounts).length === 0 ? (
-                      <p style={{color:"#9797B5",fontSize:"12px"}}>No applications yet</p>
-                    ) : Object.entries(sectorCounts).map(([sector, count]) => (
-                      <div className="bar-col" key={sector}>
-                        <div className="bar" style={{height: `${(count/maxSectorCount)*140}px`, background: sectorColors[sector] || "#6C5CE7"}}></div>
-                        <span>{sector}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="panel">
-                  <div className="panel-head"><h3>Status Split</h3></div>
-                  <div className="donut-wrap">
-                    <svg width="140" height="140" viewBox="0 0 140 140">
-                      <circle cx="70" cy="70" r="55" fill="none" stroke="#F1F1F8" strokeWidth="16"/>
-                      {donutSegments.map((seg,i) => seg.value > 0 && (
-                        <circle key={i} cx="70" cy="70" r="55" fill="none" stroke={seg.color} strokeWidth="16"
-                          strokeDasharray={`${seg.dash} ${345-seg.dash}`} strokeDashoffset={-seg.offset} strokeLinecap="round"
-                          transform="rotate(-90 70 70)"/>
-                      ))}
-                      <text x="70" y="66" textAnchor="middle" fontFamily="Sora" fontSize="22" fontWeight="800" fill="#161629">{startups.length}</text>
-                      <text x="70" y="84" textAnchor="middle" fontFamily="Inter" fontSize="10" fill="#686B85">Total</text>
-                    </svg>
-                    <div className="donut-legend">
-                      {donutSegments.map((seg,i) => (
-                        <div className="legend-row" key={i}><span><span className="dot" style={{background:seg.color}}></span>{seg.label}</span><span>{seg.value}</span></div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
 
           <div className="card">
             <div className="card-title">Pre-Incubation Application</div>
@@ -2481,6 +2427,71 @@ export default function App() {
         )}
 
         {activeView === "enquiry:preincubation" && (
+          <>
+          {isLoggedIn && (
+            <>
+              <div className="stats">
+                <div className="stat">
+                  <div className="stat-num">{startups.length}</div>
+                  <div className="stat-label">Total Applications</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#F57F17"}}>
+                    {startups.filter(s => s.status === "Pending").length}
+                  </div>
+                  <div className="stat-label">Pending Review</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#2E7D32"}}>
+                    {startups.filter(s => s.status === "Approved").length}
+                  </div>
+                  <div className="stat-label">Approved</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#C62828"}}>
+                    {startups.filter(s => s.status === "Rejected").length}
+                  </div>
+                  <div className="stat-label">Rejected</div>
+                </div>
+              </div>
+
+              <div className="grid-2">
+                <div className="panel">
+                  <div className="panel-head"><h3>Applications by Sector</h3></div>
+                  <div className="bars">
+                    {Object.keys(sectorCounts).length === 0 ? (
+                      <p style={{color:"#9797B5",fontSize:"12px"}}>No applications yet</p>
+                    ) : Object.entries(sectorCounts).map(([sector, count]) => (
+                      <div className="bar-col" key={sector}>
+                        <div className="bar" style={{height: `${(count/maxSectorCount)*140}px`, background: sectorColors[sector] || "#6C5CE7"}}></div>
+                        <span>{sector}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="panel">
+                  <div className="panel-head"><h3>Status Split</h3></div>
+                  <div className="donut-wrap">
+                    <svg width="140" height="140" viewBox="0 0 140 140">
+                      <circle cx="70" cy="70" r="55" fill="none" stroke="#F1F1F8" strokeWidth="16"/>
+                      {donutSegments.map((seg,i) => seg.value > 0 && (
+                        <circle key={i} cx="70" cy="70" r="55" fill="none" stroke={seg.color} strokeWidth="16"
+                          strokeDasharray={`${seg.dash} ${345-seg.dash}`} strokeDashoffset={-seg.offset} strokeLinecap="round"
+                          transform="rotate(-90 70 70)"/>
+                      ))}
+                      <text x="70" y="66" textAnchor="middle" fontFamily="Sora" fontSize="22" fontWeight="800" fill="#161629">{startups.length}</text>
+                      <text x="70" y="84" textAnchor="middle" fontFamily="Inter" fontSize="10" fill="#686B85">Total</text>
+                    </svg>
+                    <div className="donut-legend">
+                      {donutSegments.map((seg,i) => (
+                        <div className="legend-row" key={i}><span><span className="dot" style={{background:seg.color}}></span>{seg.label}</span><span>{seg.value}</span></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
             <div className="card">
               <div className="card-title">Preincubation Enquiry — Pre-Incubation Form Applications</div>
 
@@ -2655,6 +2666,7 @@ export default function App() {
                 </div>
               )}
             </div>
+          </>
         )}
         {activeView !== "enquiry:preincubation" && activeView.includes(":") && (() => {
           const [modKey, catKey] = activeView.split(":");
@@ -3038,38 +3050,653 @@ export default function App() {
         )}
 
         {activeView === "preIncubatedStartups" && (
+          <>
+          {isLoggedIn && (
+            <>
+              <div className="stats">
+                <div className="stat">
+                  <div className="stat-num">{startups.filter(s => s.status !== "Rejected").length}</div>
+                  <div className="stat-label">Total Preincubated Startups</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#F57F17"}}>
+                    {startups.filter(s => s.status === "Pending").length}
+                  </div>
+                  <div className="stat-label">Current</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#2E7D32"}}>
+                    {startups.filter(s => s.status === "Approved").length}
+                  </div>
+                  <div className="stat-label">Graduated</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#2E7D32"}}>
+                    {startups.filter(s => s.status !== "Rejected" && (s.is_active || "Yes") === "Yes").length}
+                  </div>
+                  <div className="stat-label">Active</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-num" style={{color:"#C62828"}}>
+                    {startups.filter(s => s.status !== "Rejected" && s.is_active === "No").length}
+                  </div>
+                  <div className="stat-label">Non-active</div>
+                </div>
+              </div>
+
+              <div className="grid-2">
+                <div className="panel">
+                  <div className="panel-head"><h3>Applications by Sector</h3></div>
+                  <div className="bars">
+                    {Object.keys(sectorCounts).length === 0 ? (
+                      <p style={{color:"#9797B5",fontSize:"12px"}}>No applications yet</p>
+                    ) : Object.entries(sectorCounts).map(([sector, count]) => (
+                      <div className="bar-col" key={sector}>
+                        <div className="bar" style={{height: `${(count/maxSectorCount)*140}px`, background: sectorColors[sector] || "#6C5CE7"}}></div>
+                        <span>{sector}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="panel">
+                  <div className="panel-head"><h3>Status Split</h3></div>
+                  <div className="donut-wrap">
+                    <svg width="140" height="140" viewBox="0 0 140 140">
+                      <circle cx="70" cy="70" r="55" fill="none" stroke="#F1F1F8" strokeWidth="16"/>
+                      {donutSegments.map((seg,i) => seg.value > 0 && (
+                        <circle key={i} cx="70" cy="70" r="55" fill="none" stroke={seg.color} strokeWidth="16"
+                          strokeDasharray={`${seg.dash} ${345-seg.dash}`} strokeDashoffset={-seg.offset} strokeLinecap="round"
+                          transform="rotate(-90 70 70)"/>
+                      ))}
+                      <text x="70" y="66" textAnchor="middle" fontFamily="Sora" fontSize="22" fontWeight="800" fill="#161629">{startups.length}</text>
+                      <text x="70" y="84" textAnchor="middle" fontFamily="Inter" fontSize="10" fill="#686B85">Total</text>
+                    </svg>
+                    <div className="donut-legend">
+                      {donutSegments.map((seg,i) => (
+                        <div className="legend-row" key={i}><span><span className="dot" style={{background:seg.color}}></span>{seg.label}</span><span>{seg.value}</span></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <div className="card-title">Pre Incubated Startups — Records</div>
+                  <p style={{ fontSize: "13px", color: "#6B6B85", margin: "4px 0 0 0" }}>All applicants currently in the Pre-Incubation pipeline.</p>
+                </div>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => goToView("preincubation")}
+                    style={{
+                      background: "#2E7D32", color: "#fff", border: "none", borderRadius: "8px",
+                      padding: "10px 18px", fontWeight: "bold", cursor: "pointer", fontSize: "14px",
+                    }}
+                  >
+                    + Add New Record
+                  </button>
+                )}
+              </div>
+
+              {checkingAuth ? (
+                <p style={{ padding: "1rem", color: "#6B6B85" }}>Checking access...</p>
+              ) : !isLoggedIn ? (
+                <form onSubmit={handleLogin} style={{maxWidth: "320px", display: "flex", flexDirection: "column", gap: "12px", padding: "1rem"}}>
+                  <div className="form-field">
+                    <label>Username</label>
+                    <input
+                      type="text"
+                      placeholder="Enter admin username"
+                      value={loginForm.username}
+                      onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter password"
+                      value={loginForm.password}
+                      onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                  </div>
+                  {loginError && <p style={{ fontSize: "12px", color: "#FF4D8D" }}>{loginError}</p>}
+                  <button type="submit" className="submit-btn" style={{ marginTop: "6px" }}>Login as Admin</button>
+                </form>
+              ) : (
+                <div style={{ width: "100%", marginTop: "1rem" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "1rem" }}>
+                    <input
+                      type="text"
+                      placeholder="Search by startup name, founder, or email..."
+                      value={startupSearch}
+                      onChange={(e) => setStartupSearch(e.target.value)}
+                      style={{ flex: "1", minWidth: "220px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    />
+                    <select
+                      value={startupSectorFilter}
+                      onChange={(e) => setStartupSectorFilter(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    >
+                      <option value="">All Sectors</option>
+                      <option>Agritech</option>
+                      <option>Healthtech</option>
+                      <option>Edtech</option>
+                      <option>Fintech</option>
+                    </select>
+                    <select
+                      value={startupStatusFilter}
+                      onChange={(e) => setStartupStatusFilter(e.target.value)}
+                      style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #DCDCE7" }}
+                    >
+                      <option value="">All Status</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                    {(startupSearch || startupSectorFilter || startupStatusFilter) && (
+                      <button
+                        onClick={() => { setStartupSearch(""); setStartupSectorFilter(""); setStartupStatusFilter(""); }}
+                        className="btn-small"
+                        style={{ background: "#EFEFEF", color: "#161629", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ overflowX: "auto", width: "100%" }}>
+                  <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                        <th style={{ padding: "12px" }}>ID</th>
+                        <th style={{ padding: "12px" }}>Startup Name</th>
+                        <th style={{ padding: "12px" }}>Founder</th>
+                        <th style={{ padding: "12px" }}>Sector</th>
+                        <th style={{ padding: "12px" }}>Stage</th>
+                        <th style={{ padding: "12px" }}>Status</th>
+                        <th style={{ padding: "12px" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const filteredStartups = startups.filter((s) => {
+                          const q = startupSearch.trim().toLowerCase();
+                          const matchesSearch = q === "" ||
+                            (s.startupName || "").toLowerCase().includes(q) ||
+                            (s.name || "").toLowerCase().includes(q) ||
+                            (s.email || "").toLowerCase().includes(q);
+                          const matchesSector = startupSectorFilter === "" || s.sector === startupSectorFilter;
+                          const matchesStatus = startupStatusFilter === "" || (s.status || "Pending") === startupStatusFilter;
+                          return s.status !== "Rejected" && matchesSearch && matchesSector && matchesStatus;
+                        });
+                        if (filteredStartups.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="7" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>
+                                {startups.length === 0 ? "No applications found." : "No applications match your search/filters."}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return filteredStartups.map((s) => (
+                        <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                          <td style={{ padding: "12px" }}>{s.id}</td>
+                          <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
+                          <td style={{ padding: "12px" }}>{s.name}</td>
+                          <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
+                          <td style={{ padding: "12px" }}>{s.startupStage}</td>
+                          <td style={{ padding: "12px" }}>
+                            <span className={`status-pill ${s.status?.toLowerCase()}`} style={{
+                              padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
+                              color: s.status === "Approved" ? "#2E7D32" : s.status === "Rejected" ? "#C62828" : "#F57F17",
+                              background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
+                            }}>{s.status || "Pending"}</span>
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <div className="actions-cell">
+                              <button onClick={() => setViewingStartup(s)} className="big-action-btn view">
+                                <span className="btn-label">View</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => openPitchModal(s)} className="big-action-btn pitch">
+                                <span className="btn-label">Pitch</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => downloadFolder(s.id)} className="big-action-btn docs">
+                                <span className="btn-label">Docs</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => openEvaluationModal(s)} className="big-action-btn evaluate">
+                                <span className="btn-label">Evaluate</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => toggleCertificate(s.id)} className="big-action-btn cert">
+                                <span className="btn-label">{s.has_certificate ? "Cert ✓" : "No Cert"}</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => updateStatus(s.id, "Approved")} disabled={actionLoadingId === s.id} className="big-action-btn approve">
+                                <span className="btn-label">Approve</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </span>
+                              </button>
+                              <button onClick={() => updateStatus(s.id, "Rejected")} disabled={actionLoadingId === s.id} className="big-action-btn reject">
+                                <span className="btn-label">Reject</span>
+                                <span className="btn-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => toggleStartupActive(s.id)}
+                                className="btn-small"
+                                style={{
+                                  padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer",
+                                  background: (s.is_active || "Yes") === "Yes" ? "#FFEBEE" : "#E8F5E9",
+                                  color: (s.is_active || "Yes") === "Yes" ? "#C62828" : "#2E7D32",
+                                }}
+                              >
+                                {(s.is_active || "Yes") === "Yes" ? "Mark Non-active" : "Mark Active"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        {activeView !== "enquiry:preincubation" && activeView.includes(":") && (() => {
+          const [modKey, catKey] = activeView.split(":");
+          const cfg = MODULE_CONFIG[modKey];
+          const isEnquiry = modKey === "enquiry";
+          const enquiryLabels = { preincubation: "Preincubation Enquiry", incubation: "Incubation Enquiry", internship: "Internship Enquiry" };
+          const panelTitle = isEnquiry ? (enquiryLabels[catKey] || "Enquiry") : (cfg ? `${cfg.label} — ${cfg.subcats.find((s) => s.key === catKey)?.label || catKey}` : null);
+          if (!isEnquiry && !cfg) return null;
+
+          return (
+            <div className="card">
+              <div className="card-title">{panelTitle}</div>
+              <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+                Add a record below. All records for this section are listed underneath.
+              </p>
+
+              <div className="form-grid">
+                <div className="form-field">
+                  <label>{isEnquiry ? "Enquirer Name" : "Title"} *</label>
+                  <input type="text" value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} />
+                </div>
+                <div className="form-field">
+                  <label>Date</label>
+                  <input type="date" value={moduleForm.recordDate} onChange={(e) => setModuleForm({ ...moduleForm, recordDate: e.target.value })} />
+                </div>
+                <div className="form-field">
+                  <label>Status</label>
+                  <select value={moduleForm.status} onChange={(e) => setModuleForm({ ...moduleForm, status: e.target.value })}>
+                    <option value="">Select Status</option>
+                    <option>Open</option>
+                    <option>In Progress</option>
+                    <option>Completed</option>
+                    <option>Closed</option>
+                  </select>
+                </div>
+                {isEnquiry && (
+                  <>
+                    <div className="form-field">
+                      <label>Contact Email</label>
+                      <input type="email" value={moduleForm.contactEmail} onChange={(e) => setModuleForm({ ...moduleForm, contactEmail: e.target.value })} />
+                    </div>
+                    <div className="form-field">
+                      <label>Contact Phone</label>
+                      <input type="text" value={moduleForm.contactPhone} onChange={(e) => setModuleForm({ ...moduleForm, contactPhone: e.target.value })} />
+                    </div>
+                  </>
+                )}
+                <div className="form-field" style={{ gridColumn: "span 2" }}>
+                  <label>{isEnquiry ? "Enquiry / Message" : "Description"}</label>
+                  <input type="text" value={moduleForm.description} onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })} />
+                </div>
+                <div className="form-field" style={{ gridColumn: "span 2" }}>
+                  <label>Notes</label>
+                  <input type="text" value={moduleForm.notes} onChange={(e) => setModuleForm({ ...moduleForm, notes: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="file-upload" style={{ maxWidth: "400px", marginBottom: "1.5rem" }}>
+                <label>Attachment (optional)</label>
+                <input type="file" onChange={(e) => setModuleAttachment(e.target.files[0])} />
+                {moduleAttachment && <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {moduleAttachment.name}</div>}
+              </div>
+
+              <button className="submit-btn" onClick={() => saveModuleRecord(modKey, catKey)} disabled={isSavingModuleRecord} style={{ opacity: isSavingModuleRecord ? 0.7 : 1 }}>
+                {isSavingModuleRecord ? "Saving..." : "Save Record"}
+              </button>
+
+              <div style={{ overflowX: "auto", marginTop: "2rem" }}>
+                <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                      <th style={{ padding: "12px" }}>{isEnquiry ? "Enquirer" : "Title"}</th>
+                      <th style={{ padding: "12px" }}>Date</th>
+                      <th style={{ padding: "12px" }}>Status</th>
+                      <th style={{ padding: "12px" }}>{isEnquiry ? "Message" : "Description"}</th>
+                      <th style={{ padding: "12px" }}>Attachment</th>
+                      <th style={{ padding: "12px" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {moduleRecordsLoading ? (
+                      <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>Loading...</td></tr>
+                    ) : moduleRecords.length === 0 ? (
+                      <tr><td colSpan="6" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No records yet.</td></tr>
+                    ) : moduleRecords.map((r) => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                        <td style={{ padding: "12px", fontWeight: "bold" }}>{r.title}</td>
+                        <td style={{ padding: "12px" }}>{r.record_date}</td>
+                        <td style={{ padding: "12px" }}>{r.status}</td>
+                        <td style={{ padding: "12px" }}>{r.description}</td>
+                        <td style={{ padding: "12px" }}>
+                          {r.attachment ? (
+                            <a href={`${BASE_URL}/download-module-attachment/${r.id}`} target="_blank" rel="noreferrer">Download</a>
+                          ) : "—"}
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <button
+                            onClick={() => deleteModuleRecord(r.id, modKey, catKey)}
+                            className="btn-small"
+                            style={{ background: "#FFEBEE", color: "#C62828", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
+        {activeView === "leaderboard" && (
           <div className="card">
-            <div className="card-title">Pre Incubated Startups — Records</div>
+            <div className="card-title">🏆 Startup Leaderboard</div>
             <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
-              All applicants currently in the Pre-Incubation pipeline.
+              Ranked by average evaluation score across all evaluators.
             </p>
-            <div style={{ overflowX: "auto" }}>
+
+            {(() => {
+              const ranked = [...incubationApplications]
+                .filter((a) => a.eval_count > 0)
+                .sort((a, b) => b.eval_avg - a.eval_avg);
+              const notEvaluated = incubationApplications.filter((a) => !a.eval_count);
+
+              const rankIcon = (i) => {
+                if (i === 0) return "🥇";
+                if (i === 1) return "🥈";
+                if (i === 2) return "🥉";
+                return `#${i + 1}`;
+              };
+
+              return (
+                <>
+                  {ranked.length === 0 ? (
+                    <p style={{ color: "#6B6B85", padding: "12px 0" }}>No applications have been evaluated yet.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {ranked.map((a, i) => (
+                        <div key={a.id} style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          border: i < 3 ? "2px solid #6C5CE7" : "1px solid #EFEFEF",
+                          borderRadius: "10px", padding: "14px 18px",
+                          background: i < 3 ? "#F8F7FE" : "#FFF"
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <div style={{ fontSize: i < 3 ? "26px" : "16px", fontWeight: "bold", minWidth: "40px", textAlign: "center", color: "#6C5CE7" }}>
+                              {rankIcon(i)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "bold", fontSize: "15px" }}>{a.startupName}</div>
+                              <div style={{ fontSize: "12px", color: "#6B6B85" }}>{a.sector} · {a.incubateeLevel}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontWeight: "bold", fontSize: "16px" }}>{a.eval_avg} / 60</div>
+                              <div style={{ fontSize: "11px", color: "#6B6B85" }}>{a.eval_count} evaluator{a.eval_count > 1 ? "s" : ""}</div>
+                            </div>
+                            <button
+                              onClick={() => openEvaluatorsList(a)}
+                              className="btn-small"
+                              style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                            >
+                              View Profile
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {notEvaluated.length > 0 && (
+                    <div style={{ marginTop: "2rem" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#6B6B85", marginBottom: "8px" }}>Not Yet Evaluated</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {notEvaluated.map((a) => (
+                          <span key={a.id} style={{ background: "#F1F1F8", padding: "6px 12px", borderRadius: "16px", fontSize: "12px", color: "#686B85" }}>
+                            {a.startupName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        {activeView === "incubatedStartups" && (
+          <div className="card">
+            <div className="card-title">Incubated Startups — Records</div>
+            <p style={{ fontSize: "13px", color: "#6B6B85", marginBottom: "1.5rem" }}>
+              Add and manage detailed records for startups that have graduated into incubation.
+            </p>
+
+            <div className="card-head">
+              <div className="num" style={{ background: "#6C5CE7" }}>1</div>
+              <div><h3>Startup Details</h3><p>Core information about the startup</p></div>
+            </div>
+            <div className="form-grid">
+              {[
+                ["startupId", "Startup ID"], ["startupName", "Startup Name"],
+              ].map(([key, label]) => (
+                <div className="form-field" key={key}>
+                  <label>{label}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
+                </div>
+              ))}
+
+              <div className="form-field">
+                <label>Photo</label>
+                <input type="file" accept="image/*" onChange={(e) => setStartupPhotoFile(e.target.files[0])} />
+                {startupPhotoFile && <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {startupPhotoFile.name}</div>}
+              </div>
+
+              {[
+                ["founder", "Founder Name"], ["coFounder", "Co-Founder Name"], ["email", "Email", true],
+                ["phone", "Phone", true], ["website", "Website"], ["linkedin", "LinkedIn"],
+                ["startupIndiaNumber", "Startup India Number"], ["dpiitNumber", "DPIIT Number"], ["cin", "CIN"],
+                ["pan", "PAN"], ["sector", "Sector"],
+                ["subSector", "Sub Sector"], ["technology", "Technology"], ["trlLevel", "TRL Level"],
+                ["incubationStage", "Incubation Stage"], ["currentStatus", "Number of Employees"], ["revenue", "Revenue"],
+                ["valuation", "Valuation"], ["investmentRaised", "Investment Raised"],
+                ["assignedMentor", "Assigned Mentor"],
+              ].map(([key, label, isRequired]) => (
+                <div className="form-field" key={key}>
+                  <label>{label}{isRequired && <span style={{ color: "red" }}> *</span>}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} required={isRequired}/>
+                </div>
+              ))}
+
+              <div className="form-field">
+                <label>Stage</label>
+                <select value={incubatedForm.assignedRm} onChange={(e) => setIncubatedForm({ ...incubatedForm, assignedRm: e.target.value })}>
+                  <option value="">Select Stage</option>
+                  <option>Ideation Stage</option>
+                  <option>Pre-Seed Stage</option>
+                  <option>Seed Stage</option>
+                  <option>Early Growth (Series A and B)</option>
+                  <option>Scaling</option>
+                </select>
+              </div>
+
+              {[
+                ["currentMilestone", "Success Story"], ["riskScore", "Risk Score"],
+              ].map(([key, label]) => (
+                <div className="form-field" key={key}>
+                  <label>{label}</label>
+                  <input type="text" value={incubatedForm[key]} onChange={(e) => setIncubatedForm({ ...incubatedForm, [key]: e.target.value })} />
+                </div>
+              ))}
+
+              <div className="form-field">
+                <label>City</label>
+                <input type="text" value={incubatedForm.city} onChange={(e) => setIncubatedForm({ ...incubatedForm, city: e.target.value })} />
+              </div>
+              <div className="form-field">
+                <label>Address</label>
+                <input type="text" value={incubatedForm.address} onChange={(e) => setIncubatedForm({ ...incubatedForm, address: e.target.value })} />
+              </div>
+
+              <div className="form-field">
+                <label>Remarks</label>
+                <input type="text" value={incubatedForm.remarks} onChange={(e) => setIncubatedForm({ ...incubatedForm, remarks: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="card-head">
+              <div className="num" style={{ background: "#FF6B35" }}>2</div>
+              <div><h3>Documents</h3><p>Upload relevant documents (optional)</p></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "1.5rem" }}>
+              {[
+                ["pitchDeck", "Pitch Deck"], ["pan", "PAN"], ["gst", "GST"], ["mou", "MOU"], ["aoa", "Product Pics"],
+                ["startupIndia", "Startup India"], ["bankStatement", "Bank Statement"], ["ip", "IP"],
+                ["agreements", "Agreements"], ["reports", "Reports"], ["funding", "Funding"],
+                ["investorDeck", "Investor Deck"], ["meetingMinutes", "Meeting Minutes"],
+              ].map(([key, label]) => (
+                <div key={key} style={{ border: "1px solid #EFEFEF", borderRadius: "8px", padding: "10px 12px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "6px" }}>{label}</div>
+                  <input
+                    type="file"
+                    onChange={(e) => setDocumentRepoFiles({ ...documentRepoFiles, [key]: e.target.files[0] })}
+                    style={{ fontSize: "11px", width: "100%" }}
+                  />
+                  {documentRepoFiles[key] && (
+                    <div style={{ fontSize: "11px", color: "#00B894", marginTop: "4px" }}>✓ {documentRepoFiles[key].name}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button className="submit-btn" onClick={saveIncubatedRecord} disabled={isSavingCrmRecord} style={{ opacity: isSavingCrmRecord ? 0.7 : 1 }}>
+              {isSavingCrmRecord ? "Saving..." : "Save Record"}
+            </button>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "2.5rem", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0 }}>Startup Detail</h3>
+              <button
+                onClick={exportStartupCrmToExcel}
+                className="btn-small"
+                style={{ background: "#00B894", color: "#FFF", padding: "8px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+              >
+                📊 Export to Excel
+              </button>
+            </div>
+            <div style={{ overflowX: "auto", marginBottom: "2.5rem" }}>
               <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead>
                   <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
                     <th style={{ padding: "12px" }}>Startup Name</th>
                     <th style={{ padding: "12px" }}>Founder</th>
                     <th style={{ padding: "12px" }}>Sector</th>
-                    <th style={{ padding: "12px" }}>Stage</th>
-                    <th style={{ padding: "12px" }}>Status</th>
+                    <th style={{ padding: "12px" }}>Incubation Stage</th>
+                    <th style={{ padding: "12px" }}>Employees</th>
+                    <th style={{ padding: "12px" }}>Mentor</th>
+                    <th style={{ padding: "12px" }}>Program Stage</th>
+                    <th style={{ padding: "12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {startups.length === 0 ? (
-                    <tr><td colSpan="5" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No pre-incubation applications found.</td></tr>
-                  ) : startups.map((s) => (
+                  {startupCrmList.length === 0 ? (
+                    <tr><td colSpan="8" style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No startup records yet.</td></tr>
+                  ) : startupCrmList.map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
-                      <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startupName}</td>
-                      <td style={{ padding: "12px" }}>{s.name}</td>
-                      <td style={{ padding: "12px" }}><span className="badge-sector">{s.sector}</span></td>
-                      <td style={{ padding: "12px" }}>{s.startupStage}</td>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{s.startup_name}</td>
+                      <td style={{ padding: "12px" }}>{s.founder}</td>
+                      <td style={{ padding: "12px" }}>{s.sector}</td>
+                      <td style={{ padding: "12px" }}>{s.incubation_stage}</td>
+                      <td style={{ padding: "12px" }}>{s.current_status}</td>
+                      <td style={{ padding: "12px" }}>{s.assigned_mentor}</td>
+                      <td style={{ padding: "12px" }}>{s.assigned_rm}</td>
                       <td style={{ padding: "12px" }}>
-                        <span style={{
-                          padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold",
-                          color: s.status === "Approved" ? "#2E7D32" : s.status === "Rejected" ? "#C62828" : "#F57F17",
-                          background: s.status === "Approved" ? "#E8F5E9" : s.status === "Rejected" ? "#FFEBEE" : "#FFF3E0"
-                        }}>{s.status || "Pending"}</span>
+                        <button
+                          onClick={() => setViewingStartupCrmRecord(s)}
+                          className="btn-small"
+                          style={{ background: "#6C5CE7", color: "#FFF", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+                        >
+                          View
+                        </button>
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style={{ marginBottom: "10px" }}>Document Repository</h3>
+            <div style={{ overflowX: "auto" }}>
+              <table className="admin-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "#F1F1F8", borderBottom: "2px solid #DCDCE7" }}>
+                    <th style={{ padding: "12px" }}>Startup</th>
+                    {documentRepoColumns.map((c) => (
+                      <th key={c.key} style={{ padding: "12px", whiteSpace: "nowrap" }}>{c.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {documentRepoList.length === 0 ? (
+                    <tr><td colSpan={documentRepoColumns.length + 1} style={{ padding: "20px", textAlign: "center", color: "#6B6B85" }}>No documents uploaded yet.</td></tr>
+                  ) : documentRepoList.map((d) => (
+                    <tr key={d.id} style={{ borderBottom: "1px solid #EFEFEF" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold" }}>{d.startup}</td>
+                      {documentRepoColumns.map((c) => (
+                        <td key={c.key} style={{ padding: "12px" }}>
+                          {d[c.key] ? (
+                            <a href={`${BASE_URL}/download-document/${d.id}/${c.key}`} target="_blank" rel="noreferrer">Download</a>
+                          ) : "—"}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

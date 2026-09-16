@@ -239,7 +239,8 @@ def migrate_db():
         ("pitch_date", "TEXT"),
         ("pitch_time", "TEXT"),
         ("pitch_link", "TEXT"),
-        ("certificate_status", "TEXT DEFAULT 'Not Issued'")
+        ("certificate_status", "TEXT DEFAULT 'Not Issued'"),
+        ("is_active", "TEXT DEFAULT 'Yes'")
     ]
     for col_name, col_type in new_columns:
         try:
@@ -547,6 +548,21 @@ def update_status(id):
     try_sending_email(startup["email"], f"Startup Application {status}", status_html)
 
     return jsonify({"message": f"Status Updated to {status}"}), 200
+
+@app.route('/toggle-startup-active/<int:id>', methods=['POST'])
+@login_required
+def toggle_startup_active(id):
+    conn = get_db_connection()
+    startup = conn.execute("SELECT is_active FROM startups WHERE id = ?", (id,)).fetchone()
+    if not startup:
+        conn.close()
+        return jsonify({"error": "Startup not found"}), 404
+    new_val = "No" if (startup["is_active"] or "Yes") == "Yes" else "Yes"
+    conn.execute("UPDATE startups SET is_active = ? WHERE id = ?", (new_val, id))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Updated", "is_active": new_val}), 200
+
 @app.route('/update-pitching/<int:id>', methods=['POST'])
 @login_required
 def update_pitching(id):
