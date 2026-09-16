@@ -95,6 +95,7 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [viewingStartup, setViewingStartup] = useState(null);
+  const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [pitchingStartup, setPitchingStartup] = useState(null);
   const [pitchForm, setPitchForm] = useState({ pitch_date: "", pitch_time: "", pitch_link: "" });
   const [activeView, setActiveView] = useState("dashboard");
@@ -1273,6 +1274,7 @@ export default function App() {
         alert(result.message);
         resetForm();
         if (!isFormOnly && isLoggedIn) await fetchStartups();
+        setShowAddRecordModal(false);
       } else {
         alert(result.error);
       }
@@ -1308,212 +1310,7 @@ export default function App() {
     return withOffset;
   });
 
-  return (
-    <div className={`layout ${isFormOnly ? "form-only-layout" : ""}`}>
-      {!isFormOnly && isLoggedIn && (
-        <div className="sidebar">
-          <div className="sidebar-brand">
-            <img src="/aic-logo.png" alt="AIC MUJ" className="sidebar-logo"/>
-            <div>AIC MUJ<small>Incubation Foundation</small></div>
-          </div>
-          <div className="nav-label">Overview</div>
-          <div className={`nav-item ${activeView === "dashboard" ? "active" : ""}`} onClick={() => goToView("dashboard")}>📊 Dashboard</div>
-          <div className={`nav-item ${expandedNav === "preincubation_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "preincubation_group" ? null : "preincubation_group")}>
-            Pre Incubation {expandedNav === "preincubation_group" ? "▾" : "▸"}
-          </div>
-          {expandedNav === "preincubation_group" && PRE_INCUBATION_SUBCATS.map((sub) => (
-            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
-              {sub.label}
-            </div>
-          ))}
-
-          <div className={`nav-item ${expandedNav === "incubation_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "incubation_group" ? null : "incubation_group")}>
-            Incubation {expandedNav === "incubation_group" ? "▾" : "▸"}
-          </div>
-          {expandedNav === "incubation_group" && INCUBATION_SUBCATS.map((sub) => (
-            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
-              {sub.label}
-            </div>
-          ))}
-
-          <div className={`nav-item ${expandedNav === "internship_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "internship_group" ? null : "internship_group")}>
-            Internship {expandedNav === "internship_group" ? "▾" : "▸"}
-          </div>
-          {expandedNav === "internship_group" && INTERNSHIP_SUBCATS.map((sub) => (
-            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
-              {sub.label}
-            </div>
-          ))}
-
-          <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => goToView("leaderboard")}>🏆 Leaderboard</div>
-
-          <div className="nav-label">Programs & Schemes</div>
-          {["events", "mou", "aim", "sisfs"].map((modKey) => (
-            <div key={modKey}>
-              <div className={`nav-item ${expandedNav === modKey ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === modKey ? null : modKey)}>
-                {MODULE_CONFIG[modKey].label} {expandedNav === modKey ? "▾" : "▸"}
-              </div>
-              {expandedNav === modKey && MODULE_CONFIG[modKey].subcats.map((sub) => {
-                const viewKey = `${modKey}:${sub.key}`;
-                return (
-                  <div key={viewKey} className={`nav-item ${activeView === viewKey ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(viewKey)}>
-                    {sub.label}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-
-          <div className="nav-label">Facilities</div>
-          {["coworking", "facility"].map((modKey) => (
-            <div key={modKey}>
-              <div className={`nav-item ${expandedNav === modKey ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === modKey ? null : modKey)}>
-                {MODULE_CONFIG[modKey].label} {expandedNav === modKey ? "▾" : "▸"}
-              </div>
-              {expandedNav === modKey && MODULE_CONFIG[modKey].subcats.map((sub) => {
-                const viewKey = `${modKey}:${sub.key}`;
-                return (
-                  <div key={viewKey} className={`nav-item ${activeView === viewKey ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(viewKey)}>
-                    {sub.label}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-
-          <div className="nav-label">Review</div>
-          <div className="nav-item">Pending Review</div>
-          <div className="nav-item">Approved</div>
-          <div className="nav-item">Rejected</div>
-          <div className="nav-item">Documents</div>
-          <div className="nav-label">Settings</div>
-          <div className="nav-item">Team</div>
-          <div className="nav-item">Settings</div>
-          <div className="sidebar-footer">AIC · Manipal University Jaipur<br/>© 2026 Pre-Incubation Cell</div>
-        </div>
-      )}
-
-      <div className={`app ${isFormOnly || !isLoggedIn ? "form-only" : ""}`}>
-        <div className="header">
-          <div className="logo-pill">
-            <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
-            <span className="logo-divider"></span>
-            <img src="/manipal-logo.png" alt="Manipal University Jaipur" className="logo-manipal"/>
-          </div>
-          <h1>Automated Pre-Incubation Management System</h1>
-          <p>{isFormOnly ? "Student / Employee Application Portal" : "AIC Startup Portal — Application & Review Dashboard"}</p>
-        </div>
-
-        {activeView === "dashboard" && isLoggedIn && (() => {
-          const mc = moduleCounts;
-          const cardColors = { pre: "#6C5CE7", inc: "#FF6B35", intern: "#F5A623", events: "#FF4D8D", mou: "#00B894", aim: "#6C5CE7", sisfs: "#FF6B35", cowork: "#00B894", facility: "#6C5CE7" };
-
-          const cards = [
-            {
-              key: "pre", icon: "🌱", title: "Pre Incubation", subtitle: "Idea-stage intake & nurturing",
-              items: [
-                { label: "Pre-Incubation Form", count: startups.length, view: "preincubation" },
-                { label: "Pre-Incubation Enquiry", count: (mc.enquiry && mc.enquiry.preincubation) || 0, view: "enquiry:preincubation" },
-                { label: "Pre-Incubated Startups", count: startups.filter((s) => s.status !== "Rejected").length, view: "preIncubatedStartups" },
-                { label: "Graduated Pre-Incubated Startups", count: startups.filter((s) => s.status === "Approved").length, view: "graduated:preincubation" },
-              ],
-            },
-            {
-              key: "inc", icon: "🏢", title: "Incubation", subtitle: "Early growth-stage startups",
-              items: [
-                { label: "Incubation Form", count: incubationApplications.length, view: "incubation" },
-                { label: "Incubation Enquiry", count: (mc.enquiry && mc.enquiry.incubation) || 0, view: "enquiry:incubation" },
-                { label: "Incubated Startups", count: startupCrmList.length, view: "incubatedStartups" },
-                { label: "Graduated Incubated Startups", count: startupCrmList.filter((s) => s.assigned_rm === "Scaling").length, view: "graduated:incubation" },
-              ],
-            },
-            {
-              key: "intern", icon: "🎓", title: "Internship", subtitle: "Student & talent pipeline",
-              items: [
-                { label: "Application Form", count: internshipApplications.length, view: "internship" },
-                { label: "Enquiry", count: (mc.enquiry && mc.enquiry.internship) || 0, view: "enquiry:internship" },
-                { label: "Active Interns", count: internshipApplications.filter((a) => a.is_past_intern !== "Yes").length, view: "internship_current" },
-                { label: "Past Interns", count: internshipApplications.filter((a) => a.is_past_intern === "Yes").length, view: "internship_past" },
-              ],
-            },
-            ...Object.keys(MODULE_CONFIG).map((modKey) => ({
-              key: modKey,
-              icon: { events: "📅", mou: "🤝", aim: "🎯", sisfs: "💰", coworking: "🏗️", facility: "🔧" }[modKey],
-              title: MODULE_CONFIG[modKey].label,
-              subtitle: {
-                events: "Bootcamps, talks & workshops", mou: "Partnerships & agreements",
-                aim: "Atal Innovation Mission compliance", sisfs: "Startup India Seed Fund",
-                coworking: "Seats & cabin management", facility: "Shared equipment usage",
-              }[modKey],
-              items: MODULE_CONFIG[modKey].subcats.map((sub) => ({
-                label: sub.label,
-                count: (mc[modKey] && mc[modKey][sub.key]) || 0,
-                view: `${modKey}:${sub.key}`,
-              })),
-            })),
-          ];
-
-          const totalStartups = startups.length + startupCrmList.length;
-          const pendingReview = startups.filter((s) => s.status === "Pending").length;
-          const activeMous = (mc.mou && mc.mou.active) || 0;
-          const totalEvents = ((mc.events && mc.events.upcoming) || 0) + ((mc.events && mc.events.past) || 0);
-
-          return (
-            <div className="card" style={{ background: "transparent", boxShadow: "none", padding: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "1.5rem" }}>
-                <div>
-                  <h2 style={{ margin: "0 0 4px 0" }}>Dashboard</h2>
-                  <p style={{ color: "#6B6B85", margin: 0, fontSize: "13px" }}>All programs, schemes and facilities at a glance.</p>
-                </div>
-                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                  {[
-                    { label: "Total Startups", value: totalStartups },
-                    { label: "Pending Review", value: pendingReview },
-                    { label: "Active MoUs", value: activeMous },
-                    { label: "Total Events", value: totalEvents },
-                  ].map((stat) => (
-                    <div key={stat.label} style={{ background: "#FFF", borderRadius: "10px", padding: "10px 18px", textAlign: "center", minWidth: "110px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                      <div style={{ fontSize: "20px", fontWeight: "800" }}>{stat.value}</div>
-                      <div style={{ fontSize: "10px", color: "#6B6B85", textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "18px" }}>
-                {cards.map((card) => (
-                  <div key={card.key} style={{ background: "#FFF", borderRadius: "12px", borderTop: `4px solid ${cardColors[card.key] || "#6C5CE7"}`, padding: "18px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-                      <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#F1F1F8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>
-                        {card.icon}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: "bold", fontSize: "15px" }}>{card.title}</div>
-                        <div style={{ fontSize: "11px", color: "#9797B5" }}>{card.subtitle}</div>
-                      </div>
-                    </div>
-                    <div>
-                      {card.items.map((item) => (
-                        <div
-                          key={item.view}
-                          onClick={() => goToView(item.view)}
-                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: "1px solid #F5F5FA", cursor: "pointer" }}
-                        >
-                          <span style={{ fontSize: "13px", color: "#3A3A55" }}>• {item.label}</span>
-                          <span style={{ fontSize: "12px", fontWeight: "bold", color: cardColors[card.key] || "#6C5CE7" }}>{item.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
-        {activeView === "preincubation" && (
-          <>
-
+  const renderPreincubationFormCard = () => (
           <div className="card">
             <div className="card-title">Pre-Incubation Application</div>
 
@@ -1787,6 +1584,215 @@ export default function App() {
               {isSubmitting ? "Submitting Application..." : "Submit Application"}
             </button>
           </div>
+  );
+
+  return (
+    <div className={`layout ${isFormOnly ? "form-only-layout" : ""}`}>
+      {!isFormOnly && isLoggedIn && (
+        <div className="sidebar">
+          <div className="sidebar-brand">
+            <img src="/aic-logo.png" alt="AIC MUJ" className="sidebar-logo"/>
+            <div>AIC MUJ<small>Incubation Foundation</small></div>
+          </div>
+          <div className="nav-label">Overview</div>
+          <div className={`nav-item ${activeView === "dashboard" ? "active" : ""}`} onClick={() => goToView("dashboard")}>📊 Dashboard</div>
+          <div className={`nav-item ${expandedNav === "preincubation_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "preincubation_group" ? null : "preincubation_group")}>
+            Pre Incubation {expandedNav === "preincubation_group" ? "▾" : "▸"}
+          </div>
+          {expandedNav === "preincubation_group" && PRE_INCUBATION_SUBCATS.map((sub) => (
+            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
+              {sub.label}
+            </div>
+          ))}
+
+          <div className={`nav-item ${expandedNav === "incubation_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "incubation_group" ? null : "incubation_group")}>
+            Incubation {expandedNav === "incubation_group" ? "▾" : "▸"}
+          </div>
+          {expandedNav === "incubation_group" && INCUBATION_SUBCATS.map((sub) => (
+            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
+              {sub.label}
+            </div>
+          ))}
+
+          <div className={`nav-item ${expandedNav === "internship_group" ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === "internship_group" ? null : "internship_group")}>
+            Internship {expandedNav === "internship_group" ? "▾" : "▸"}
+          </div>
+          {expandedNav === "internship_group" && INTERNSHIP_SUBCATS.map((sub) => (
+            <div key={sub.key} className={`nav-item ${activeView === sub.key ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(sub.key)}>
+              {sub.label}
+            </div>
+          ))}
+
+          <div className={`nav-item ${activeView === "leaderboard" ? "active" : ""}`} onClick={() => goToView("leaderboard")}>🏆 Leaderboard</div>
+
+          <div className="nav-label">Programs & Schemes</div>
+          {["events", "mou", "aim", "sisfs"].map((modKey) => (
+            <div key={modKey}>
+              <div className={`nav-item ${expandedNav === modKey ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === modKey ? null : modKey)}>
+                {MODULE_CONFIG[modKey].label} {expandedNav === modKey ? "▾" : "▸"}
+              </div>
+              {expandedNav === modKey && MODULE_CONFIG[modKey].subcats.map((sub) => {
+                const viewKey = `${modKey}:${sub.key}`;
+                return (
+                  <div key={viewKey} className={`nav-item ${activeView === viewKey ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(viewKey)}>
+                    {sub.label}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          <div className="nav-label">Facilities</div>
+          {["coworking", "facility"].map((modKey) => (
+            <div key={modKey}>
+              <div className={`nav-item ${expandedNav === modKey ? "active" : ""}`} onClick={() => setExpandedNav(expandedNav === modKey ? null : modKey)}>
+                {MODULE_CONFIG[modKey].label} {expandedNav === modKey ? "▾" : "▸"}
+              </div>
+              {expandedNav === modKey && MODULE_CONFIG[modKey].subcats.map((sub) => {
+                const viewKey = `${modKey}:${sub.key}`;
+                return (
+                  <div key={viewKey} className={`nav-item ${activeView === viewKey ? "active" : ""}`} style={{ paddingLeft: "28px", fontSize: "13px" }} onClick={() => goToView(viewKey)}>
+                    {sub.label}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          <div className="nav-label">Review</div>
+          <div className="nav-item">Pending Review</div>
+          <div className="nav-item">Approved</div>
+          <div className="nav-item">Rejected</div>
+          <div className="nav-item">Documents</div>
+          <div className="nav-label">Settings</div>
+          <div className="nav-item">Team</div>
+          <div className="nav-item">Settings</div>
+          <div className="sidebar-footer">AIC · Manipal University Jaipur<br/>© 2026 Pre-Incubation Cell</div>
+        </div>
+      )}
+
+      <div className={`app ${isFormOnly || !isLoggedIn ? "form-only" : ""}`}>
+        <div className="header">
+          <div className="logo-pill">
+            <img src="/aic-logo.png" alt="AIC MUJ" className="logo-aic"/>
+            <span className="logo-divider"></span>
+            <img src="/manipal-logo.png" alt="Manipal University Jaipur" className="logo-manipal"/>
+          </div>
+          <h1>Automated Pre-Incubation Management System</h1>
+          <p>{isFormOnly ? "Student / Employee Application Portal" : "AIC Startup Portal — Application & Review Dashboard"}</p>
+        </div>
+
+        {activeView === "dashboard" && isLoggedIn && (() => {
+          const mc = moduleCounts;
+          const cardColors = { pre: "#6C5CE7", inc: "#FF6B35", intern: "#F5A623", events: "#FF4D8D", mou: "#00B894", aim: "#6C5CE7", sisfs: "#FF6B35", cowork: "#00B894", facility: "#6C5CE7" };
+
+          const cards = [
+            {
+              key: "pre", icon: "🌱", title: "Pre Incubation", subtitle: "Idea-stage intake & nurturing",
+              items: [
+                { label: "Pre-Incubation Form", count: startups.length, view: "preincubation" },
+                { label: "Pre-Incubation Enquiry", count: (mc.enquiry && mc.enquiry.preincubation) || 0, view: "enquiry:preincubation" },
+                { label: "Pre-Incubated Startups", count: startups.filter((s) => s.status !== "Rejected").length, view: "preIncubatedStartups" },
+                { label: "Graduated Pre-Incubated Startups", count: startups.filter((s) => s.status === "Approved").length, view: "graduated:preincubation" },
+              ],
+            },
+            {
+              key: "inc", icon: "🏢", title: "Incubation", subtitle: "Early growth-stage startups",
+              items: [
+                { label: "Incubation Form", count: incubationApplications.length, view: "incubation" },
+                { label: "Incubation Enquiry", count: (mc.enquiry && mc.enquiry.incubation) || 0, view: "enquiry:incubation" },
+                { label: "Incubated Startups", count: startupCrmList.length, view: "incubatedStartups" },
+                { label: "Graduated Incubated Startups", count: startupCrmList.filter((s) => s.assigned_rm === "Scaling").length, view: "graduated:incubation" },
+              ],
+            },
+            {
+              key: "intern", icon: "🎓", title: "Internship", subtitle: "Student & talent pipeline",
+              items: [
+                { label: "Application Form", count: internshipApplications.length, view: "internship" },
+                { label: "Enquiry", count: (mc.enquiry && mc.enquiry.internship) || 0, view: "enquiry:internship" },
+                { label: "Active Interns", count: internshipApplications.filter((a) => a.is_past_intern !== "Yes").length, view: "internship_current" },
+                { label: "Past Interns", count: internshipApplications.filter((a) => a.is_past_intern === "Yes").length, view: "internship_past" },
+              ],
+            },
+            ...Object.keys(MODULE_CONFIG).map((modKey) => ({
+              key: modKey,
+              icon: { events: "📅", mou: "🤝", aim: "🎯", sisfs: "💰", coworking: "🏗️", facility: "🔧" }[modKey],
+              title: MODULE_CONFIG[modKey].label,
+              subtitle: {
+                events: "Bootcamps, talks & workshops", mou: "Partnerships & agreements",
+                aim: "Atal Innovation Mission compliance", sisfs: "Startup India Seed Fund",
+                coworking: "Seats & cabin management", facility: "Shared equipment usage",
+              }[modKey],
+              items: MODULE_CONFIG[modKey].subcats.map((sub) => ({
+                label: sub.label,
+                count: (mc[modKey] && mc[modKey][sub.key]) || 0,
+                view: `${modKey}:${sub.key}`,
+              })),
+            })),
+          ];
+
+          const totalStartups = startups.length + startupCrmList.length;
+          const pendingReview = startups.filter((s) => s.status === "Pending").length;
+          const activeMous = (mc.mou && mc.mou.active) || 0;
+          const totalEvents = ((mc.events && mc.events.upcoming) || 0) + ((mc.events && mc.events.past) || 0);
+
+          return (
+            <div className="card" style={{ background: "transparent", boxShadow: "none", padding: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "1.5rem" }}>
+                <div>
+                  <h2 style={{ margin: "0 0 4px 0" }}>Dashboard</h2>
+                  <p style={{ color: "#6B6B85", margin: 0, fontSize: "13px" }}>All programs, schemes and facilities at a glance.</p>
+                </div>
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  {[
+                    { label: "Total Startups", value: totalStartups },
+                    { label: "Pending Review", value: pendingReview },
+                    { label: "Active MoUs", value: activeMous },
+                    { label: "Total Events", value: totalEvents },
+                  ].map((stat) => (
+                    <div key={stat.label} style={{ background: "#FFF", borderRadius: "10px", padding: "10px 18px", textAlign: "center", minWidth: "110px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                      <div style={{ fontSize: "20px", fontWeight: "800" }}>{stat.value}</div>
+                      <div style={{ fontSize: "10px", color: "#6B6B85", textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "18px" }}>
+                {cards.map((card) => (
+                  <div key={card.key} style={{ background: "#FFF", borderRadius: "12px", borderTop: `4px solid ${cardColors[card.key] || "#6C5CE7"}`, padding: "18px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                      <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#F1F1F8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>
+                        {card.icon}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: "bold", fontSize: "15px" }}>{card.title}</div>
+                        <div style={{ fontSize: "11px", color: "#9797B5" }}>{card.subtitle}</div>
+                      </div>
+                    </div>
+                    <div>
+                      {card.items.map((item) => (
+                        <div
+                          key={item.view}
+                          onClick={() => goToView(item.view)}
+                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: "1px solid #F5F5FA", cursor: "pointer" }}
+                        >
+                          <span style={{ fontSize: "13px", color: "#3A3A55" }}>• {item.label}</span>
+                          <span style={{ fontSize: "12px", fontWeight: "bold", color: cardColors[card.key] || "#6C5CE7" }}>{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {activeView === "preincubation" && (
+          <>
+
+          {renderPreincubationFormCard()}
 
           </>
         )}
@@ -3129,7 +3135,7 @@ export default function App() {
                 </div>
                 {isLoggedIn && (
                   <button
-                    onClick={() => goToView("preincubation")}
+                    onClick={() => setShowAddRecordModal(true)}
                     style={{
                       background: "#2E7D32", color: "#fff", border: "none", borderRadius: "8px",
                       padding: "10px 18px", fontWeight: "bold", cursor: "pointer", fontSize: "14px",
@@ -3703,6 +3709,21 @@ export default function App() {
               </table>
             </div>
           </div>
+        )}
+
+        {showAddRecordModal && createPortal(
+          <div className="modal-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+            <div className="modal-content" style={{ background: "#FFF", borderRadius: "12px", padding: "2rem", width: "80%", maxHeight: "88vh", overflowY: "auto", position: "relative" }}>
+              <button
+                onClick={() => setShowAddRecordModal(false)}
+                style={{ position: "absolute", top: "16px", right: "16px", background: "#F1F1F8", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", fontSize: "16px", fontWeight: "bold" }}
+              >
+                ✕
+              </button>
+              {renderPreincubationFormCard()}
+            </div>
+          </div>
+          , document.body
         )}
 
         {viewingStartup && createPortal(
